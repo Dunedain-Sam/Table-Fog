@@ -31,7 +31,7 @@ For a Foundry scene, select or drop the `.json` and its image together. If the i
 
 ## Getting started
 
-1. Open `tablefog.html` in **Chrome or Edge**. Other modern browsers work too, but cannot keep a campaign file linked.
+1. Open `index.html` (or the app's GitHub Pages address) in **Chrome or Edge**. Other modern browsers work too, but cannot keep a campaign file linked.
 2. Click **Add map…** or drop map files onto the window.
 3. Click **Open player window**, drag it to the table screen, then click it or press **F** for fullscreen. Allow pop-ups if the browser blocks it.
 4. Press **M** and click the map to place a party marker, then drag it to explore.
