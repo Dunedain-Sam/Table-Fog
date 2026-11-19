@@ -66,16 +66,6 @@ For a Foundry scene, select or drop the `.json` and its image together. If the i
 - If the linked file was changed elsewhere, the newer file is loaded. You're asked first if this browser also has unsaved changes.
 - In browsers without file linking (Firefox, Safari), *Save as…* downloads a copy instead.
 
-## Hosting on GitHub Pages (optional)
-
-1. Create a public repository and upload `tablefog.html` renamed to `index.html`.
-2. In **Settings → Pages**, deploy from the `main` branch, `/ (root)` folder.
-3. Open `https://<your-username>.github.io/<repository>/`.
-
-To move existing prep across, use *Save as…* in the old copy and *Open…* in the hosted one.
-
-**Do not commit maps or `.tablefog` files to a public repository.** Anyone can download them, and bought maps are usually not licensed for redistribution. The hosted app never uploads your maps; they stay in your browser and your campaign file.
-
 ## Tips
 
 - Set **TV diagonal** in the Player screen panel so the **1″ grid** button matches your screen.
