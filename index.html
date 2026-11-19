@@ -1,0 +1,1467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Table Fog</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root { --bg:#14161a; --panel:#1c1f25; --line:#2c313a; --text:#dfe3ea; --dim:#8a93a3; --acc:#4aa8ff; --warn:#ff8a3d; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  html,body { margin:0; height:100%; background:#000; color:var(--text); font:13px/1.4 system-ui,Segoe UI,sans-serif; overflow:hidden; }
+  #gm { display:flex; height:100%; background:var(--bg); }
+  .dock { width:290px; flex:none; background:var(--panel); overflow-y:auto; padding:8px; transition:width .12s; }
+  #left { border-right:1px solid var(--line); }
+  #right { border-left:1px solid var(--line); }
+  .dock.empty { width:14px; padding:0; }
+  body.pdrag .dock.empty { width:60px; background:#4aa8ff18; outline:2px dashed var(--acc); outline-offset:-4px; }
+  .panel { border:1px solid var(--line); border-radius:6px; margin-bottom:8px; background:#181b20; }
+  .panel.drag { opacity:.45; border-color:var(--acc); }
+  .panel > h2 { display:flex; align-items:center; gap:6px; margin:0; padding:7px 8px; cursor:grab; user-select:none; }
+  .panel > h2 span { flex:1; }
+  .panel > h2 button { padding:0 6px; border:none; background:none; color:var(--dim); font-size:13px; }
+  .panel > h2 button:hover { color:var(--text); }
+  .panel > .pb { padding:0 8px 8px; }
+  .panel.min > .pb { display:none; }
+  #stage { flex:1; position:relative; min-width:0; }
+  #gc { position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; }
+  h2 { font-size:11px; text-transform:uppercase; letter-spacing:.8px; color:var(--dim); }
+  button { background:#2a2f38; color:var(--text); border:1px solid #3a404b; border-radius:5px; padding:5px 8px; font:inherit; cursor:pointer; }
+  button:hover { background:#343a45; }
+  button.on { background:var(--acc); border-color:var(--acc); color:#04121f; font-weight:600; }
+  button.warn.on { background:var(--warn); border-color:var(--warn); }
+  button.wide { width:100%; }
+  .row { display:flex; gap:5px; margin:5px 0; align-items:center; flex-wrap:wrap; }
+  .row > button { flex:1; }
+  .tools { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+  .tools button { text-align:left; }
+  kbd { float:right; color:var(--dim); font:11px ui-monospace,Consolas,monospace; }
+  button.on kbd { color:#04121f; }
+  label.f { display:flex; justify-content:space-between; align-items:center; gap:8px; margin:5px 0; color:var(--dim); }
+  input[type=number],input[type=text] { width:84px; background:#111318; color:var(--text); border:1px solid #3a404b; border-radius:4px; padding:3px 5px; font:inherit; }
+  input[type=range] { flex:1; }
+  #maps .m { display:flex; gap:4px; margin:3px 0; }
+  #maps .m button:first-child { flex:1; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #maps .sec { display:flex; align-items:center; gap:4px; margin:8px 0 2px; color:var(--dim); font-size:12px; font-weight:600; cursor:pointer; user-select:none; }
+  #maps .sec span { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #maps .sec button { padding:0 5px; border:none; background:none; color:var(--dim); }
+  #maps .sec button:hover { color:var(--text); }
+  #maps .in { margin-left:10px; }
+  #maps .grp { border:1px dashed transparent; border-radius:6px; padding:0 3px 2px; margin:0 -4px; }
+  #maps .grp.over { border-color:var(--acc); background:#4aa8ff18; }
+  #maps .m[draggable=true] button:first-child { cursor:grab; }
+  #maps .empty { color:var(--dim); font-size:12px; margin:2px 0 4px 14px; font-style:italic; }
+  #mk .mk { display:flex; gap:5px; align-items:center; margin:4px 0; }
+  #mk .mk i { width:14px; height:14px; border-radius:50%; flex:none; border:2px solid #fff; }
+  #mk .mk input[type=text] { flex:1; width:auto; min-width:0; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#666; margin-right:6px; }
+  .dot.ok { background:#3ddc84; }
+  .note { color:var(--dim); font-size:12px; margin:5px 0; }
+  #toast { position:absolute; left:50%; bottom:18px; transform:translateX(-50%); background:#000c; border:1px solid var(--line); padding:8px 14px; border-radius:6px; pointer-events:none; opacity:0; transition:opacity .25s; max-width:80%; }
+  #toast.show { opacity:1; }
+  #drop { position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:#4aa8ff22; border:3px dashed var(--acc); font-size:20px; pointer-events:none; }
+  #drop.show { display:flex; }
+  #player { position:fixed; inset:0; background:#000; }
+  #pc { width:100%; height:100%; display:block; }
+  #phint { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#000a; color:#ccc; padding:8px 14px; border-radius:6px; transition:opacity .6s; font-size:14px; pointer-events:none; }
+</style>
+</head>
+<body>
+
+<div id="gm" hidden>
+  <div id="left" class="dock">
+    <!-- Panels are written here in source order; the script places them in the left or right dock. -->
+    <section class="panel" data-id="campaign"><h2>Campaign</h2><div class="pb">
+    <div class="note" id="fileTxt"></div>
+    <div class="row" id="fileReRow" hidden><button id="bFileRe" class="wide on"></button></div>
+    <div class="row"><button id="bFileNew">New</button><button id="bFileOpen">Open…</button><button id="bFileSave">Save as…</button></div>
+    <div class="row" id="fileUnRow" hidden><button id="bFileUn" class="wide">Unlink file</button></div>
+    <input id="cPick" type="file" hidden accept=".tablefog">
+    </div></section>
+    <section class="panel" data-id="maps"><h2>Maps</h2><div class="pb">
+    <div id="maps"></div>
+    <div class="row"><button id="bAdd">Add map…</button><button id="bAddSec">Add section…</button></div>
+    <div class="row" id="pendRow" hidden><button id="bPend" class="wide on"></button></div>
+    <div class="note">Select or drop a scene file (Foundry .json or .dd2vtt) together with its image, or just an image. Drag a map onto a section to move it.</div>
+    <input id="fPick" type="file" multiple hidden accept=".json,.dd2vtt,.df2vtt,.uvtt,image/*">
+    <input id="iPick" type="file" hidden accept="image/*">
+
+    </div></section>
+    <section class="panel" data-id="player"><h2>Player screen</h2><div class="pb">
+    <div class="row"><button id="bOpen" class="wide"><span class="dot" id="pDot"></span><span id="pTxt">Open player window</span></button></div>
+    <div class="row">
+      <button id="bFreeze" class="warn" title="Stop sending changes to the player screen">Freeze</button>
+      <button id="bBlank" class="warn" title="Black out the player screen">Blank</button>
+    </div>
+    <div class="row">
+      <button id="bZoomOut" title="Zoom player view out (Shift+wheel)">−</button>
+      <button id="bZoomIn" title="Zoom player view in (Shift+wheel)">+</button>
+      <button id="bFit">Fit map</button>
+      <button id="bInch">1″ grid</button>
+    </div>
+    <div class="row">
+      <button id="bRot">Rotate 90°</button>
+      <button id="bHere" title="Centre the player view on the middle of your view">Centre here</button>
+    </div>
+    <label class="f">TV diagonal (inches) <input id="nTv" type="number" min="5" max="150" step="0.5"></label>
+    <div class="note" id="scaleNote"></div>
+
+    </div></section>
+    <section class="panel" data-id="tools"><h2>Tools</h2><div class="pb">
+    <div class="tools" id="tools">
+      <button data-tool="select">Select / pan <kbd>V</kbd></button>
+      <button data-tool="marker">Add marker <kbd>M</kbd></button>
+      <button data-tool="reveal">Reveal brush <kbd>R</kbd></button>
+      <button data-tool="hide">Hide brush <kbd>H</kbd></button>
+      <button data-tool="rrect">Reveal box <kbd>T</kbd></button>
+      <button data-tool="hrect">Hide box <kbd>Y</kbd></button>
+      <button data-tool="pview">Player view <kbd>P</kbd></button>
+      <button data-tool="wall">Draw wall <kbd>W</kbd></button>
+      <button data-tool="door">Draw door <kbd>D</kbd></button>
+      <button data-tool="erase">Erase wall <kbd>E</kbd></button>
+      <button data-tool="ping" title="Click the map to flash a ping on the player screen (or Ctrl+click with any tool)">Ping <kbd>X</kbd></button>
+    </div>
+    <label class="f">Brush (squares) <input id="rBrush" type="range" min="0.5" max="12" step="0.5"><span id="brushVal"></span></label>
+
+    </div></section>
+    <section class="panel" data-id="markers"><h2>Party markers</h2><div class="pb">
+    <div id="mk"></div>
+    <div class="note" id="mkNote">Name a marker and tick its box to show it on the player screen.</div>
+
+    </div></section>
+    <section class="panel" data-id="fog"><h2>Fog</h2><div class="pb">
+    <label class="f">Vision range (ft, 0 = unlimited) <input id="nRadius" type="number" min="0" step="5"></label>
+    <label class="f" title="On the player screen, areas the party has explored but no marker can see right now are shown dimmed and grey">Dim explored areas out of sight <input id="cDim" type="checkbox"></label>
+    <div class="row">
+      <button id="bLook" title="Reveal what every marker can currently see">Reveal from markers</button>
+    </div>
+    <div class="row">
+      <button id="bHideAll">Hide all</button>
+      <button id="bRevealAll">Reveal all</button>
+    </div>
+
+    </div></section>
+    <section class="panel" data-id="map"><h2>Map settings</h2><div class="pb">
+    <label class="f">Name <input id="tName" type="text" style="width:160px"></label>
+    <label class="f">Section <input id="tSec" type="text" list="secList" placeholder="none" style="width:160px"></label>
+    <datalist id="secList"></datalist>
+    <label class="f">Grid size (px) <input id="nGrid" type="number" min="4" step="1"></label>
+    <label class="f">Feet per square <input id="nDist" type="number" min="1" step="1"></label>
+    <label class="f">Show walls (GM) <input id="cWalls" type="checkbox"></label>
+    <label class="f">Grid overlay <input id="cGrid" type="checkbox"></label>
+
+    </div></section>
+    <section class="panel" data-id="help"><h2>Help</h2><div class="pb">
+    <div class="note">
+      Wheel: zoom · right-drag or Space-drag: pan<br>
+      Drag a marker to explore; right-click a marker to remove it<br>
+      Click a door to open or close it (purple = secret, hollow = see-through gate)<br>
+      Shift+click: centre the player view there · Shift+drag: slide it<br>
+      Shift+wheel: zoom the player view<br>
+      Ctrl+click: ping that spot on the player screen<br>
+      [ and ]: brush size<br>
+      Walls snap to the half-grid (hold Alt for free placement); Esc ends a chain; Ctrl+Z undoes the last wall<br>
+      Player window: click or press F for fullscreen<br>
+      Panels: drag a title to move it (to either side), ▾ to minimise
+    </div>
+    <div class="row"><button id="bLayout" class="wide">Reset panel layout</button></div>
+    </div></section>
+  </div>
+  <div id="stage">
+    <canvas id="gc"></canvas>
+    <div id="drop">Drop map files here</div>
+    <div id="toast"></div>
+  </div>
+  <div id="right" class="dock"></div>
+</div>
+
+<div id="player" hidden>
+  <canvas id="pc"></canvas>
+  <div id="phint">Drag this window to the table screen, then click or press F for fullscreen</div>
+</div>
+
+<script>
+'use strict';
+const IS_PLAYER = location.hash === '#player';
+const APP = 'tablefog';
+const FOG_MAX = 2048;
+const $ = id => document.getElementById(id);
+
+/* ---------- shared ---------- */
+function makeFog(w, h) {
+  const s = Math.min(1, FOG_MAX / Math.max(w, h));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.ceil(w * s)); c.height = Math.max(1, Math.ceil(h * s));
+  const x = c.getContext('2d');
+  x.fillStyle = '#000'; x.fillRect(0, 0, c.width, c.height);
+  return c;
+}
+// Fog canvas: opaque black = hidden, transparent = revealed.
+function applyOp(c, w, h, op) {
+  const x = c.getContext('2d');
+  x.save();
+  x.setTransform(c.width / w, 0, 0, c.height / h, 0, 0);
+  x.globalCompositeOperation = op.mode === 'hide' ? 'source-over' : 'destination-out';
+  x.fillStyle = '#000'; x.strokeStyle = '#000'; x.lineCap = 'round'; x.lineJoin = 'round';
+  switch (op.t) {
+    case 'all':
+      x.setTransform(1, 0, 0, 1, 0, 0); x.fillRect(0, 0, c.width, c.height); break;
+    case 'rect':
+      x.fillRect(op.x, op.y, op.w, op.h); break;
+    case 'brush':
+      x.lineWidth = op.r * 2;
+      x.beginPath(); x.moveTo(op.a[0], op.a[1]); x.lineTo(op.b[0], op.b[1]); x.stroke();
+      x.beginPath(); x.arc(op.b[0], op.b[1], op.r, 0, Math.PI * 2); x.fill();
+      break;
+    case 'los': {
+      if (op.r) { x.beginPath(); x.arc(op.cx, op.cy, op.r, 0, Math.PI * 2); x.clip(); }
+      const p = op.pts;
+      if (p.length >= 6) {
+        x.beginPath(); x.moveTo(p[0], p[1]);
+        for (let i = 2; i < p.length; i += 2) x.lineTo(p[i], p[i + 1]);
+        x.closePath(); x.fill();
+        if (op.bleed) { x.lineWidth = op.bleed * 2; x.stroke(); }
+      }
+      break;
+    }
+  }
+  x.restore();
+}
+// "In sight" canvas: black everywhere except what the markers can see right now.
+function paintVis(c, w, h, list) {
+  const x = c.getContext('2d');
+  x.globalCompositeOperation = 'source-over';
+  x.fillStyle = '#000'; x.fillRect(0, 0, c.width, c.height);
+  for (const v of list) applyOp(c, w, h, v);
+}
+// Pulsing rings; returns true while any ping is still animating.
+function drawPings(ctx, pings, grid, k) {
+  const now = performance.now(), R = Math.max(grid * 1.6, 70 * k), lw = Math.max(grid * 0.07, 4 * k);
+  let live = false;
+  for (const p of pings) {
+    const t = (now - p.t0) / 1000;
+    if (t > 3) continue;
+    live = true;
+    const fade = Math.min(1, (3 - t) * 2);
+    for (const o of [0, 0.5]) {
+      const u = (t + o) % 1;
+      ctx.globalAlpha = (1 - u) * fade;
+      ctx.beginPath(); ctx.arc(p.x, p.y, R * u, 0, Math.PI * 2);
+      ctx.lineWidth = lw * 2; ctx.strokeStyle = '#000'; ctx.stroke();
+      ctx.lineWidth = lw; ctx.strokeStyle = '#ffd400'; ctx.stroke();
+    }
+    ctx.globalAlpha = fade;
+    ctx.beginPath(); ctx.arc(p.x, p.y, lw * 1.6, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffd400'; ctx.fill(); ctx.lineWidth = lw * 0.5; ctx.strokeStyle = '#000'; ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  return live;
+}
+function loadImage(blob) {
+  // onload rather than img.decode(): decode() can stall while a window is in the background.
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error('image could not be decoded'));
+    img.src = URL.createObjectURL(blob);
+  });
+}
+function drawGrid(ctx, w, h, grid, lw) {
+  if (!(grid > 3)) return;
+  ctx.beginPath();
+  for (let x = 0; x <= w + 0.5; x += grid) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+  for (let y = 0; y <= h + 0.5; y += grid) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+  ctx.lineWidth = lw; ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.stroke();
+}
+
+/* ================= PLAYER WINDOW ================= */
+function playerMain() {
+  document.title = 'Table Fog – Players';
+  $('player').hidden = false;
+  const cv = $('pc'), ctx = cv.getContext('2d');
+  let map = null, cam = { cx: 0, cy: 0, scale: 1, rot: 0 }, opts = { blank: false, grid: false }, markers = [], vis = [], pings = [];
+  const setVis = () => {
+    if (!map) return;
+    if (!map.vis) { map.vis = document.createElement('canvas'); map.vis.width = map.fog.width; map.vis.height = map.fog.height; }
+    paintVis(map.vis, map.w, map.h, vis);
+  };
+  let gm = window.opener || (window.parent !== window ? window.parent : null), chain = Promise.resolve(), raf = 0;
+
+  const send = m => { m.app = APP; try { gm && gm.postMessage(m, '*'); } catch (e) {} };
+  const sendSize = () => send({ t: 'size', vw: innerWidth, vh: innerHeight, sw: screen.width, sh: screen.height });
+  const dirty = () => { if (!raf) raf = requestAnimationFrame(draw); };
+
+  function resize() {
+    const d = devicePixelRatio || 1;
+    cv.width = Math.round(innerWidth * d); cv.height = Math.round(innerHeight * d);
+    sendSize(); dirty();
+  }
+  function draw() {
+    raf = 0;
+    const d = devicePixelRatio || 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
+    if (!map || opts.blank) return;
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    ctx.translate(innerWidth / 2, innerHeight / 2);
+    ctx.rotate(cam.rot * Math.PI / 2);
+    ctx.scale(cam.scale, cam.scale);
+    ctx.translate(-cam.cx, -cam.cy);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(map.img, 0, 0, map.w, map.h);
+    if (opts.grid) drawGrid(ctx, map.w, map.h, map.grid, 1 / cam.scale);
+    if (opts.dim && vis.length && map.vis) {   // explored but out of sight: grey and dimmed
+      ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = 0.85; ctx.drawImage(map.vis, 0, 0, map.w, map.h);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.5; ctx.drawImage(map.vis, 0, 0, map.w, map.h);
+      ctx.globalAlpha = 1;
+    }
+    ctx.drawImage(map.fog, 0, 0, map.w, map.h);
+    const k = 1 / cam.scale, r = Math.max(map.grid * 0.32, 9 * k), fs = Math.max(map.grid * 0.3, 14 * k);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.lineJoin = 'round';
+    ctx.font = `bold ${fs}px system-ui,sans-serif`;
+    for (const m of markers) {
+      ctx.beginPath(); ctx.arc(m.x, m.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = m.color; ctx.fill();
+      ctx.lineWidth = Math.max(r * 0.16, 2 * k); ctx.strokeStyle = '#fff'; ctx.stroke();
+      if (m.name) {
+        ctx.lineWidth = fs * 0.28; ctx.strokeStyle = '#000'; ctx.strokeText(m.name, m.x, m.y + r * 1.25);
+        ctx.fillStyle = '#fff'; ctx.fillText(m.name, m.x, m.y + r * 1.25);
+      }
+    }
+    pings = pings.filter(p => performance.now() - p.t0 < 3000);
+    if (drawPings(ctx, pings, map.grid, k)) dirty();
+  }
+  async function handle(m) {
+    switch (m.t) {
+      case 'map':
+        markers = m.markers || []; vis = m.vis || []; pings = [];
+        if (!m.id) { map = null; break; }
+        {
+          const img = (map && map.id === m.id) ? map.img : await loadImage(m.blob);
+          const fog = makeFog(m.w, m.h);
+          if (m.fog) {
+            const f = await loadImage(m.fog);
+            const x = fog.getContext('2d');
+            x.clearRect(0, 0, fog.width, fog.height);
+            x.drawImage(f, 0, 0, fog.width, fog.height);
+          }
+          map = { id: m.id, img, fog, w: m.w, h: m.h, grid: m.grid };
+          if (m.cam) cam = m.cam;
+          if (m.opts) opts = m.opts;
+          setVis();
+        }
+        break;
+      case 'vis': vis = m.list || []; setVis(); break;
+      case 'ping': pings.push({ x: m.x, y: m.y, t0: performance.now() }); break;
+      case 'op': if (map) applyOp(map.fog, map.w, map.h, m.op); break;
+      case 'cam': cam = m.cam; break;
+      case 'markers': markers = m.list || []; break;
+      case 'opts': opts = m.opts; if (map && m.grid) map.grid = m.grid; break;
+    }
+    dirty();
+  }
+  addEventListener('message', e => {
+    const m = e.data;
+    if (!m || m.app !== APP) return;
+    gm = e.source;
+    chain = chain.then(() => handle(m)).catch(err => console.error(err));
+  });
+  addEventListener('resize', resize);
+  const fs = () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {}); };
+  addEventListener('click', fs);
+  addEventListener('keydown', e => {
+    if (e.key === 'f' || e.key === 'F') { document.fullscreenElement ? document.exitFullscreen() : fs(); }
+  });
+  let idle = 0;
+  const wake = () => {
+    document.body.style.cursor = ''; clearTimeout(idle);
+    idle = setTimeout(() => { document.body.style.cursor = 'none'; }, 2500);
+  };
+  addEventListener('mousemove', wake); wake();
+  setTimeout(() => { $('phint').style.opacity = 0; }, 8000);
+  resize();
+  send({ t: 'hello' });
+  setInterval(sendSize, 2000);
+}
+
+/* ================= GM WINDOW ================= */
+function gmMain() {
+  $('gm').hidden = false;
+  const cv = $('gc'), ctx = cv.getContext('2d');
+  const COLORS = ['#f43f5e', '#3b82f6', '#22c55e', '#eab308', '#a855f7', '#f97316', '#14b8a6', '#ec4899'];
+
+  const S = {
+    list: [], cur: null, tool: 'select', frozen: false, blank: false,
+    brushSq: 2, showWalls: true, gridOn: false, tv: 55, lastId: null, dim: true,
+    pending: null, added: [], collapsed: {}, sections: [], layout: null,
+  };
+  let pings = [], visQ = false;
+  const MAP_DND = 'application/x-tablefog-map';
+  const P = { win: null, vw: 1920, vh: 1080, sw: 1920, sh: 1080, seen: 0, syncing: false, queue: [] };
+  const G = { cx: 0, cy: 0, scale: 1 };   // GM camera
+  let vw = 1, vh = 1, raf = 0, drag = null, hover = null, chainPt = null, space = false, saveT = 0, toastT = 0;
+
+  /* ----- settings ----- */
+  try {
+    const st = JSON.parse(localStorage.getItem('tablefog.settings') || '{}');
+    for (const k of ['brushSq', 'showWalls', 'gridOn', 'tv', 'lastId', 'dim', 'collapsed', 'sections', 'layout']) if (st[k] !== undefined) S[k] = st[k];
+  } catch (e) {}
+  function saveSettings() {
+    try {
+      localStorage.setItem('tablefog.settings', JSON.stringify({
+        brushSq: S.brushSq, showWalls: S.showWalls, gridOn: S.gridOn, tv: S.tv, lastId: S.lastId, dim: S.dim, collapsed: S.collapsed, sections: S.sections, layout: S.layout }));
+    } catch (e) {}
+  }
+
+  /* ----- storage (IndexedDB with in-memory fallback) ----- */
+  const DB = {
+    db: null, mem: { maps: new Map(), images: new Map(), meta: new Map() },
+    async open() {
+      try {
+        this.db = await new Promise((res, rej) => {
+          const r = indexedDB.open('tablefog', 2);
+          r.onupgradeneeded = () => {
+            for (const s of ['maps', 'images', 'meta'])
+              if (!r.result.objectStoreNames.contains(s)) r.result.createObjectStore(s, { keyPath: 'id' });
+          };
+          r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+        });
+      } catch (e) { this.db = null; }
+    },
+    run(store, mode, fn) {
+      return new Promise((res, rej) => {
+        const tx = this.db.transaction(store, mode);
+        const rq = fn(tx.objectStore(store));
+        tx.oncomplete = () => res(rq && rq.result); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error);
+      });
+    },
+    all(s) { return this.db ? this.run(s, 'readonly', o => o.getAll()) : Promise.resolve([...this.mem[s].values()]); },
+    get(s, id) { return this.db ? this.run(s, 'readonly', o => o.get(id)) : Promise.resolve(this.mem[s].get(id)); },
+    put(s, v) { return this.db ? this.run(s, 'readwrite', o => o.put(v)) : Promise.resolve(this.mem[s].set(v.id, v)); },
+    del(s, id) { return this.db ? this.run(s, 'readwrite', o => o.delete(id)) : Promise.resolve(this.mem[s].delete(id)); },
+    clear(s) { return this.db ? this.run(s, 'readwrite', o => o.clear()) : Promise.resolve(this.mem[s].clear()); },
+  };
+
+  /* ----- helpers ----- */
+  const dirty = () => { if (!raf) raf = requestAnimationFrame(draw); };
+  function toast(msg, ms = 3500) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms);
+  }
+  const toMap = e => {
+    const r = cv.getBoundingClientRect();
+    return { x: (e.clientX - r.left - vw / 2) / G.scale + G.cx, y: (e.clientY - r.top - vh / 2) / G.scale + G.cy };
+  };
+  function distSeg(p, c) {
+    const dx = c[2] - c[0], dy = c[3] - c[1], l2 = dx * dx + dy * dy;
+    let t = l2 ? ((p.x - c[0]) * dx + (p.y - c[1]) * dy) / l2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(p.x - (c[0] + t * dx), p.y - (c[1] + t * dy));
+  }
+  function segHit(ax, ay, bx, by, c) {
+    const d1x = bx - ax, d1y = by - ay, d2x = c[2] - c[0], d2y = c[3] - c[1];
+    const den = d1x * d2y - d1y * d2x;
+    if (Math.abs(den) < 1e-12) return false;
+    const t = ((c[0] - ax) * d2y - (c[1] - ay) * d2x) / den;
+    const u = ((c[0] - ax) * d1y - (c[1] - ay) * d1x) / den;
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+  }
+  const radiusPx = c => c.radius > 0 ? c.radius / (c.dist || 5) * c.grid : 0;
+
+  /* ----- line of sight ----- */
+  function blockers(c) {
+    const out = [];
+    // Segments are lengthened a little (doors more) so hairline gaps in the wall data do not leak light.
+    for (const w of c.walls) if (w.sight && !(w.door && w.open)) {
+      const dx = w.c[2] - w.c[0], dy = w.c[3] - w.c[1], l = Math.hypot(dx, dy) || 1;
+      const e = w.door ? c.grid * 0.18 : 1.5, ex = dx / l * e, ey = dy / l * e;
+      out.push([w.c[0] - ex, w.c[1] - ey, w.c[2] + ex, w.c[3] + ey]);
+    }
+    const W = c.w, H = c.h, o = 2;
+    out.push([-o, -o, W + o, -o], [W + o, -o, W + o, H + o], [W + o, H + o, -o, H + o], [-o, H + o, -o, -o]);
+    return out;
+  }
+  function visPoly(px, py, segs) {
+    const n = segs.length, angs = [];
+    for (let i = 0; i < n; i++) {
+      const s = segs[i];
+      const a = Math.atan2(s[1] - py, s[0] - px), b = Math.atan2(s[3] - py, s[2] - px);
+      angs.push(a - 1e-4, a, a + 1e-4, b - 1e-4, b, b + 1e-4);
+    }
+    angs.sort((a, b) => a - b);
+    const out = [];
+    let prev = NaN;
+    for (let k = 0; k < angs.length; k++) {
+      const a = angs[k];
+      if (a === prev) continue;
+      prev = a;
+      const dx = Math.cos(a), dy = Math.sin(a);
+      let best = Infinity;
+      for (let i = 0; i < n; i++) {
+        const s = segs[i];
+        const sx = s[2] - s[0], sy = s[3] - s[1];
+        const den = dx * sy - dy * sx;
+        if (den > -1e-12 && den < 1e-12) continue;
+        const ex = s[0] - px, ey = s[1] - py;
+        const t = (ex * sy - ey * sx) / den;
+        if (t <= 0 || t >= best) continue;
+        const u = (ex * dy - ey * dx) / den;
+        if (u < -1e-9 || u > 1 + 1e-9) continue;
+        best = t;
+      }
+      if (best < Infinity) out.push(Math.round((px + dx * best) * 10) / 10, Math.round((py + dy * best) * 10) / 10);
+    }
+    return out;
+  }
+  function refreshLos(reveal) {
+    const c = S.cur; if (!c) return;
+    c.segs = blockers(c);
+    for (const m of c.markers) { m.poly = visPoly(m.x, m.y, c.segs); if (reveal) revealMarker(m); }
+    postVis(); dirty();
+  }
+  // What the markers can see right now, so the player screen can dim explored areas that are out of sight.
+  const visList = c => c.markers.filter(m => m.poly && m.poly.length >= 6)
+    .map(m => ({ t: 'los', pts: m.poly, cx: Math.round(m.x), cy: Math.round(m.y), r: radiusPx(c), bleed: c.grid * 0.15 }));
+  function postVis() {
+    if (visQ) return;
+    visQ = true;
+    requestAnimationFrame(() => { visQ = false; if (S.cur) post({ t: 'vis', list: visList(S.cur) }); });
+  }
+  function ping(p) {
+    pings.push({ x: p.x, y: p.y, t0: performance.now() });
+    post({ t: 'ping', x: Math.round(p.x), y: Math.round(p.y) });
+    if (S.frozen) toast('The player screen is frozen, so the ping was not shown there');
+    else if (S.blank) toast('The player screen is blanked, so the ping was not shown there');
+    else if (!inPlayerRect(p)) toast('That ping is outside the player view');
+    dirty();
+  }
+  function revealMarker(m) {
+    const c = S.cur;
+    emit({ t: 'los', pts: m.poly, cx: m.x, cy: m.y, r: radiusPx(c), bleed: c.grid * 0.15 });
+  }
+
+  /* ----- fog ops + sync ----- */
+  function post(m, force) {
+    if (!P.win || P.win.closed) return;
+    if (S.frozen && !force) return;
+    m.app = APP;
+    try { P.win.postMessage(m, '*'); } catch (e) {}
+  }
+  function emit(op) {
+    const c = S.cur; if (!c) return;
+    applyOp(c.fog, c.w, c.h, op);
+    if (P.syncing) P.queue.push(op); else post({ t: 'op', op });
+    dirty(); scheduleSave();
+  }
+  const playerOpts = () => ({ blank: S.blank, grid: S.gridOn, dim: S.dim });
+  const playerMarkers = c => c.markers
+    .map((m, i) => ({ x: Math.round(m.x), y: Math.round(m.y), name: m.name || '', color: COLORS[i % COLORS.length], show: m.show }))
+    .filter(m => m.show);
+  const postMarkers = () => { if (S.cur) post({ t: 'markers', list: playerMarkers(S.cur) }); };
+  async function sendFull() {
+    if (!P.win || P.win.closed || S.frozen || P.syncing) return;
+    const c = S.cur;
+    if (!c) { post({ t: 'map', id: null }); return; }
+    P.syncing = true; P.queue = [];
+    const fog = await new Promise(r => c.fog.toBlob(r, 'image/png'));
+    P.syncing = false;
+    if (S.cur !== c) return sendFull();
+    post({ t: 'map', id: c.id, blob: c.image, w: c.w, h: c.h, grid: c.grid, fog, cam: c.cam, opts: playerOpts(), markers: playerMarkers(c), vis: visList(c) });
+    for (const op of P.queue) post({ t: 'op', op });
+    P.queue = [];
+  }
+  addEventListener('message', e => {
+    const m = e.data;
+    if (!m || m.app !== APP) return;
+    const isNew = P.win !== e.source;
+    P.win = e.source; P.seen = Date.now();
+    if (m.t === 'size') { P.vw = m.vw; P.vh = m.vh; P.sw = m.sw; P.sh = m.sh; }
+    if (isNew || m.t === 'hello') sendFull();
+    updatePlayerUI(); dirty();
+  });
+  setInterval(updatePlayerUI, 2000);
+
+  /* ----- player camera ----- */
+  function setCam(patch) {
+    const c = S.cur; if (!c) return;
+    Object.assign(c.cam, patch);
+    c.cam.scale = Math.max(0.02, Math.min(8, c.cam.scale));
+    post({ t: 'cam', cam: c.cam });
+    updatePlayerUI(); dirty(); scheduleSave();
+  }
+  function fitCam(c) {
+    const odd = c.cam && c.cam.rot % 2;
+    const w = odd ? P.vh : P.vw, h = odd ? P.vw : P.vh;
+    return { cx: c.w / 2, cy: c.h / 2, scale: Math.min(w / c.w, h / c.h) };
+  }
+  const ppi = () => Math.hypot(P.sw, P.sh) / (S.tv || 55);
+  function updatePlayerUI() {
+    const live = P.win && !P.win.closed && Date.now() - P.seen < 6000;
+    $('pDot').classList.toggle('ok', !!live);
+    $('pTxt').textContent = live ? 'Player window connected' : 'Open player window';
+    const c = S.cur;
+    $('scaleNote').textContent = c
+      ? `Player view: 1 square = ${(c.grid * c.cam.scale / ppi()).toFixed(2)} in on a ${P.sw}×${P.sh} screen`
+      : '';
+  }
+
+  /* ----- persistence ----- */
+  function scheduleSave() { clearTimeout(saveT); saveT = setTimeout(() => saveNow(), 800); }
+  async function saveNow(c = S.cur) {
+    clearTimeout(saveT);
+    if (!c) return;
+    const fog = await new Promise(r => c.fog.toBlob(r, 'image/png'));
+    try {
+      await DB.put('maps', {
+        id: c.id, name: c.name, section: c.section || '', w: c.w, h: c.h, grid: c.grid, dist: c.dist, walls: c.walls,
+        markers: c.markers.map(m => ({ x: m.x, y: m.y, name: m.name || '', show: m.show })), cam: c.cam, radius: c.radius, fog });
+      touchFile();
+    } catch (e) { console.error(e); toast('Could not save: ' + e.message); }
+  }
+  addEventListener('pagehide', () => { saveNow(); });
+
+  /* ----- campaign file: one file on disk that mirrors everything kept in this browser ----- */
+  // Layout: "TABLEFOG 1 <header bytes>\n", a JSON header, then the map images and fog images back to back.
+  const F = { handle: null, name: '', ok: false, dirty: false, writing: false, t: 0, savedAt: 0 };
+  const canLink = !!(window.showSaveFilePicker && window.showOpenFilePicker);
+  const PICK = { types: [{ description: 'Table Fog campaign', accept: { 'application/octet-stream': ['.tablefog'] } }] };
+  const lsSet = (k, v) => { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  function updateFileUI() {
+    const t = $('fileTxt');
+    if (!F.handle) t.textContent = canLink
+      ? 'Not linked to a file. Maps and fog are kept in this browser only. “Save as…” links a campaign file that is then kept up to date automatically.'
+      : 'This browser cannot keep a file linked (Chrome and Edge can). “Save as…” downloads a copy of the campaign; “Open…” loads one.';
+    else if (!F.ok) t.textContent = `“${F.name}” is linked but not connected, so changes are not reaching it yet.`;
+    else if (F.dirty || F.writing) t.textContent = `Linked to “${F.name}” · saving…`;
+    else t.textContent = `Linked to “${F.name}”` + (F.savedAt ? ` · saved ${new Date(F.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' · up to date');
+    t.style.color = F.handle && !F.ok ? 'var(--warn)' : '';
+    $('fileReRow').hidden = !(F.handle && !F.ok);
+    $('bFileRe').textContent = `Reconnect “${F.name}”`;
+    $('fileUnRow').hidden = !F.handle;
+  }
+  function touchFile() {
+    if (!F.handle) return;
+    F.dirty = true; lsSet('tablefog.fileDirty', '1');
+    clearTimeout(F.t); F.t = setTimeout(writeFile, 2000);
+    updateFileUI();
+  }
+  async function buildCampaign() {
+    const parts = [];
+    let off = 0;
+    const add = b => { if (!b) return null; const e = { off, size: b.size, type: b.type }; parts.push(b); off += b.size; return e; };
+    const head = { app: APP, version: 1, saved: new Date().toISOString(), sections: S.sections, collapsed: S.collapsed, lastId: S.lastId, maps: [] };
+    for (const r of await DB.all('maps')) {
+      const im = await DB.get('images', r.id);
+      if (im && im.blob) head.maps.push({ ...r, fog: add(r.fog), image: add(im.blob) });
+    }
+    const hb = new TextEncoder().encode(JSON.stringify(head));
+    return new Blob([`TABLEFOG 1 ${hb.length}\n`, hb, ...parts], { type: 'application/octet-stream' });
+  }
+  async function writeFile() {
+    clearTimeout(F.t);
+    if (!F.handle || !F.ok || !F.dirty) return;
+    if (F.writing) { F.t = setTimeout(writeFile, 1000); return; }
+    F.writing = true; F.dirty = false;
+    try {
+      const blob = await buildCampaign();
+      const w = await F.handle.createWritable();
+      await w.write(blob); await w.close();
+      F.savedAt = Date.now();
+      if (!F.dirty) lsSet('tablefog.fileDirty', null);
+      try { lsSet('tablefog.fileStamp', String((await F.handle.getFile()).lastModified)); } catch (e) {}
+    } catch (e) {
+      console.error(e);
+      F.dirty = true; F.ok = false;
+      toast(`Could not save to “${F.name}”: ${e.message}`, 7000);
+    }
+    F.writing = false;
+    updateFileUI();
+  }
+  async function loadCampaign(file) {
+    const m = /^TABLEFOG 1 (\d+)\n/.exec(await file.slice(0, 80).text());
+    if (!m) throw new Error('this is not a Table Fog campaign file');
+    const base = m[0].length + +m[1];
+    const head = JSON.parse(await file.slice(m[0].length, base).text());
+    if (!head || !Array.isArray(head.maps)) throw new Error('the campaign file is damaged');
+    // Copied out of the file, because the file itself is overwritten by later saves.
+    const cut = async e => e ? new Blob([await file.slice(base + e.off, base + e.off + e.size).arrayBuffer()], { type: e.type }) : null;
+    clearTimeout(saveT); S.cur = null; S.list = []; S.pending = null;
+    await DB.clear('maps'); await DB.clear('images');
+    for (const r of head.maps) {
+      const image = await cut(r.image);
+      if (!image) continue;
+      const rec = { ...r, fog: await cut(r.fog) }; delete rec.image;
+      await DB.put('images', { id: r.id, blob: image }); await DB.put('maps', rec);
+      S.list.push({ id: r.id, name: r.name, section: r.section || '' });
+    }
+    S.sections = head.sections || []; S.collapsed = head.collapsed || {}; S.lastId = head.lastId || null;
+    saveSettings(); renderMaps(); renderMarkers(); syncInputs(); dirty();
+    const first = S.list.find(x => x.id === S.lastId) || S.list[0];
+    if (first) await openMap(first.id); else sendFull();
+  }
+  async function linkHandle(h) {
+    F.handle = h; F.name = h ? h.name : ''; F.ok = !!h; F.dirty = false; F.savedAt = 0;
+    clearTimeout(F.t); lsSet('tablefog.fileDirty', null); lsSet('tablefog.fileStamp', null);
+    try { if (h) await DB.put('meta', { id: 'file', handle: h }); else await DB.del('meta', 'file'); } catch (e) { console.error(e); }
+    updateFileUI();
+  }
+  // Checks permission, then brings the file and the browser copy back in step.
+  async function fileConnect(ask) {
+    const h = F.handle; if (!h) return;
+    try {
+      let p = await h.queryPermission({ mode: 'readwrite' });
+      if (p !== 'granted' && ask) p = await h.requestPermission({ mode: 'readwrite' });
+      if (p !== 'granted') { F.ok = false; updateFileUI(); return; }
+      const file = await h.getFile(), stamp = lsGet('tablefog.fileStamp'), local = lsGet('tablefog.fileDirty') === '1';
+      const changed = file.size > 0 && stamp && String(file.lastModified) !== stamp;
+      F.ok = true;
+      if (changed && (!local || confirm(`“${F.name}” was changed outside this browser (for example on another computer), and this browser also has changes that never reached the file.\n\nOK: load the file and drop this browser's changes.\nCancel: keep this browser's version and overwrite the file.`))) {
+        await loadCampaign(file);
+        lsSet('tablefog.fileStamp', String(file.lastModified)); lsSet('tablefog.fileDirty', null);
+        F.dirty = false; clearTimeout(F.t);
+        toast(`Loaded the newer “${F.name}”`);
+      } else if (local || changed || !file.size) { F.dirty = true; await writeFile(); }
+    } catch (e) {
+      console.error(e); F.ok = false;
+      toast(`Could not use “${F.name}”: ${e.message}`, 7000);
+    }
+    updateFileUI();
+  }
+  const leaveNote = () => !F.handle
+    ? (S.list.length ? 'The maps now in Table Fog are not saved to a file and will be removed from this browser.' : '')
+    : F.ok ? `“${F.name}” keeps everything and can be opened again later.`
+    : `“${F.name}” is not connected, so changes made since it was last saved will be lost.`;
+  async function flushFile() { await saveNow(); if (F.handle && F.ok) await writeFile(); }
+  async function fileSaveAs() {
+    if (!canLink) {
+      await saveNow();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await buildCampaign()); a.download = 'campaign.tablefog'; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      return;
+    }
+    let h;
+    try { h = await showSaveFilePicker({ suggestedName: F.name || 'campaign.tablefog', ...PICK }); } catch (e) { return; }
+    await saveNow();
+    await linkHandle(h);
+    F.dirty = true; await writeFile();
+    if (F.ok) toast(`Linked to “${h.name}”. Changes are now saved to it automatically.`, 5000);
+  }
+  async function fileOpen() {
+    const note = leaveNote();
+    if (note && S.list.length && !confirm('Open a campaign file?\n\n' + note)) return;
+    if (!canLink) { $('cPick').click(); return; }
+    let h;
+    try { [h] = await showOpenFilePicker(PICK); } catch (e) { return; }
+    let p = 'prompt';
+    try { p = await h.requestPermission({ mode: 'readwrite' }); } catch (e) {}
+    try {
+      await flushFile();
+      const file = await h.getFile();
+      await loadCampaign(file);
+      await linkHandle(h);
+      F.ok = p === 'granted';
+      lsSet('tablefog.fileStamp', String(file.lastModified));
+      toast(`Opened “${h.name}”`);
+    } catch (e) { console.error(e); toast('Could not open that file: ' + e.message, 7000); }
+    updateFileUI();
+  }
+  async function fileNew() {
+    const note = leaveNote();
+    if (!note && !S.list.length) return;
+    if (!confirm('Start a new, empty campaign?\n\n' + note)) return;
+    await flushFile();
+    await linkHandle(null);
+    clearTimeout(saveT); S.cur = null; S.list = []; S.sections = []; S.collapsed = {}; S.lastId = null; S.pending = null;
+    await DB.clear('maps'); await DB.clear('images');
+    saveSettings(); renderMaps(); renderMarkers(); syncInputs(); updatePlayerUI(); dirty(); sendFull();
+  }
+
+  /* ----- importing ----- */
+  function parseScene(j, fileName) {
+    const base = fileName.replace(/\.[^.]+$/, '');
+    if (j && j.resolution && (j.line_of_sight || j.image)) {           // Universal VTT / dd2vtt
+      const r = j.resolution, g = r.pixels_per_grid, ox = r.map_origin.x, oy = r.map_origin.y;
+      const walls = [];
+      for (const poly of [...(j.line_of_sight || []), ...(j.objects_line_of_sight || [])])
+        for (let i = 0; i + 1 < poly.length; i++)
+          walls.push({ c: [(poly[i].x - ox) * g, (poly[i].y - oy) * g, (poly[i + 1].x - ox) * g, (poly[i + 1].y - oy) * g], door: 0, open: false, sight: true });
+      for (const p of j.portals || []) {
+        const b = p.bounds; if (!b || b.length < 2) continue;
+        walls.push({ c: [(b[0].x - ox) * g, (b[0].y - oy) * g, (b[1].x - ox) * g, (b[1].y - oy) * g], door: 1, open: p.closed === false, sight: true });
+      }
+      let image = null;
+      if (j.image) {
+        const bin = atob(j.image), u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        const type = j.image.startsWith('UklG') ? 'image/webp' : j.image.startsWith('/9j/') ? 'image/jpeg' : 'image/png';
+        image = new Blob([u8], { type });
+      }
+      return { name: base, w: r.map_size.x * g, h: r.map_size.y * g, grid: g, dist: 5, walls, image };
+    }
+    if (j && Array.isArray(j.walls) && j.width && j.height) {          // Foundry scene (v9 and v10+)
+      const go = (j.grid && typeof j.grid === 'object') ? j.grid : { size: j.grid, distance: j.gridDistance };
+      const grid = go.size || 100;
+      const padX = Math.ceil((j.padding || 0) * j.width / grid) * grid;
+      const padY = Math.ceil((j.padding || 0) * j.height / grid) * grid;
+      const walls = j.walls.filter(w => w.c && w.c.length === 4).map(w => {
+        const sv = w.sight !== undefined ? w.sight : w.sense;
+        return { c: [w.c[0] - padX, w.c[1] - padY, w.c[2] - padX, w.c[3] - padY], door: w.door || 0, open: w.ds === 1, sight: sv !== 0 };
+      });
+      const src = (j.background && j.background.src) || j.img || '';
+      return { name: j.name || base, w: j.width, h: j.height, grid, dist: go.distance || 5, walls, image: null,
+               imgName: decodeURIComponent(src.split('/').pop() || '').toLowerCase() };
+    }
+    return null;
+  }
+  async function addMap(sc, image) {
+    if (!sc.w) { const im = await loadImage(image); sc.w = im.naturalWidth; sc.h = im.naturalHeight; }
+    const id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    await DB.put('images', { id, blob: image });
+    const section = S.cur ? S.cur.section || '' : '';   // new maps join the section of the open map
+    await DB.put('maps', { id, name: sc.name, section, w: sc.w, h: sc.h, grid: sc.grid || 70, dist: sc.dist || 5,
+                           walls: sc.walls || [], markers: [], cam: null, radius: 0, fog: null });
+    S.list.push({ id, name: sc.name, section });
+    touchFile();
+    return id;
+  }
+  async function importFiles(files) {
+    files = [...files];
+    if (files.some(f => /\.tablefog$/i.test(f.name))) { toast('To open a campaign file, use “Open…” in the Campaign panel', 6000); return; }
+    const imgs = [], scenes = [];
+    let skipped = 0;
+    for (const f of files) {
+      const n = f.name.toLowerCase();
+      if (/\.(json|dd2vtt|df2vtt|uvtt)$/.test(n)) {
+        let sc = null;
+        try { sc = parseScene(JSON.parse(await f.text()), f.name); } catch (e) {}
+        if (sc) scenes.push(sc); else skipped++;
+      } else if (f.type.startsWith('image/') || /\.(png|jpe?g|webp|avif|gif)$/.test(n)) imgs.push(f);
+      else skipped++;
+    }
+    // An image picked on its own completes a scene that is waiting for one.
+    if (S.pending && !scenes.length && imgs.length === 1) {
+      const sc = S.pending; S.pending = null;
+      const id = await addMap(sc, imgs[0]);
+      renderMaps(); await openMap(id); return;
+    }
+    const used = new Set(), need = scenes.filter(s => !s.image);
+    let last = null;
+    for (const sc of scenes) {
+      if (!sc.image) {
+        let im = imgs.find(i => !used.has(i) && i.name.toLowerCase() === sc.imgName);
+        if (!im && need.length === 1 && imgs.length === 1) im = imgs[0];
+        if (im) { used.add(im); sc.image = im; }
+      }
+      if (sc.image) last = await addMap(sc, sc.image);
+      else S.pending = sc;
+    }
+    for (const im of imgs) if (!used.has(im))
+      last = await addMap({ name: im.name.replace(/\.[^.]+$/, ''), grid: 70, walls: [] }, im);
+    renderMaps();
+    if (last) await openMap(last);
+    if (S.pending) { toast(`Choose the image for “${S.pending.name}”`, 6000); try { $('iPick').click(); } catch (e) {} }
+    else if (skipped && !last) toast('No map found in those files');
+  }
+
+  /* ----- map switching ----- */
+  async function openMap(id) {
+    if (S.cur && S.cur.id === id) return;
+    if (S.cur) await saveNow();
+    const r = await DB.get('maps', id), im = await DB.get('images', id);
+    if (!r || !im) { toast('That map could not be loaded'); return; }
+    const c = { ...r, image: im.blob, added: [] };
+    try { c.img = await loadImage(c.image); } catch (e) { toast('The map image could not be decoded'); return; }
+    c.fog = makeFog(c.w, c.h);
+    if (r.fog) {
+      try {
+        const f = await loadImage(r.fog), x = c.fog.getContext('2d');
+        x.clearRect(0, 0, c.fog.width, c.fog.height); x.drawImage(f, 0, 0, c.fog.width, c.fog.height);
+      } catch (e) {}
+    }
+    c.markers = (c.markers || []).map(m => ({ x: m.x, y: m.y, name: m.name || '', show: m.show !== false }));
+    c.section = c.section || '';
+    c.cam = Object.assign({ rot: 0 }, c.cam || {});
+    if (!c.cam.scale) Object.assign(c.cam, fitCam(c));
+    S.cur = c; S.lastId = id; S.added = []; chainPt = null; drag = null;
+    saveSettings();
+    G.cx = c.w / 2; G.cy = c.h / 2; G.scale = Math.min(vw / c.w, vh / c.h) * 0.95;
+    refreshLos(false);
+    renderMaps(); renderMarkers(); syncInputs(); updatePlayerUI(); dirty();
+    sendFull();
+  }
+  async function deleteMap(id) {
+    const m = S.list.find(x => x.id === id);
+    if (!m || !confirm(`Delete “${m.name}” and its fog from Table Fog? Your original files are not touched.`)) return;
+    await DB.del('maps', id); await DB.del('images', id);
+    S.list = S.list.filter(x => x.id !== id);
+    touchFile();
+    if (S.cur && S.cur.id === id) { clearTimeout(saveT); S.cur = null; sendFull(); syncInputs(); renderMarkers(); dirty(); }
+    renderMaps();
+  }
+  async function renameSection(old) {
+    const v = prompt(`Rename section “${old}” (leave empty to dissolve it):`, old);
+    if (v === null) return;
+    const name = v.trim();
+    if (name === old) return;
+    for (const m of S.list.filter(m => (m.section || '') === old)) await moveMap(m.id, name, true);
+    S.sections = S.sections.filter(s => s !== old);
+    if (name && !S.sections.includes(name)) S.sections.push(name);
+    if (S.collapsed[old]) { delete S.collapsed[old]; if (name) S.collapsed[name] = true; }
+    saveSettings(); renderMaps(); syncInputs(); touchFile();
+  }
+  async function moveMap(id, section, quiet) {
+    const m = S.list.find(x => x.id === id);
+    if (!m || (m.section || '') === section) return;
+    m.section = section;
+    if (S.cur && S.cur.id === id) { S.cur.section = section; scheduleSave(); }
+    else { const r = await DB.get('maps', id); if (r) { r.section = section; await DB.put('maps', r); touchFile(); } }
+    if (!quiet) { renderMaps(); syncInputs(); }
+  }
+  function addSection() {
+    const v = prompt('Name for the new section:');
+    const name = v && v.trim();
+    if (!name) return;
+    if (!S.sections.includes(name)) S.sections.push(name);
+    delete S.collapsed[name];
+    saveSettings(); renderMaps(); touchFile();
+  }
+  function renderMaps() {
+    const el = $('maps'); el.textContent = '';
+    const cmp = (a, b) => a.localeCompare(b, undefined, { numeric: true });
+    S.list.sort((a, b) => cmp(a.name, b.name));
+    // Sections come from the maps plus any (possibly empty) ones the user created; '' = no section, sorted first.
+    const secs = [...new Set([...S.list.map(m => m.section || ''), ...S.sections])].sort(cmp);
+    if (secs.length && secs[0] !== '' ) secs.unshift('');
+    const dl = $('secList'); dl.textContent = '';
+    for (const s of secs) if (s) { const o = document.createElement('option'); o.value = s; dl.append(o); }
+    for (const s of secs) {
+      const maps = S.list.filter(m => (m.section || '') === s);
+      if (!s && !maps.length && secs.length === 1) continue;
+      const hasCur = S.cur && maps.some(m => m.id === S.cur.id);
+      const shut = !!S.collapsed[s];
+      const grp = document.createElement('div'); grp.className = 'grp';
+      const isMapDrag = e => e.dataTransfer && [...e.dataTransfer.types].includes(MAP_DND);
+      grp.ondragover = e => { if (isMapDrag(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; grp.classList.add('over'); } };
+      grp.ondragleave = e => { if (!grp.contains(e.relatedTarget)) grp.classList.remove('over'); };
+      grp.ondrop = e => {
+        if (!isMapDrag(e)) return;
+        e.preventDefault(); e.stopPropagation(); grp.classList.remove('over');
+        moveMap(e.dataTransfer.getData(MAP_DND), s);
+      };
+      const el0 = $('maps'), el = grp; el0.append(grp);
+      if (s || secs.length > 1) {
+        const h = document.createElement('div'); h.className = 'sec';
+        const t = document.createElement('span');
+        t.textContent = `${shut ? '▸' : '▾'} ${s || 'No section'} (${maps.length})`;
+        if (shut && hasCur) t.style.color = 'var(--acc)';
+        h.append(t);
+        h.onclick = () => { S.collapsed[s] = !shut; saveSettings(); renderMaps(); };
+        if (s) {
+          const r = document.createElement('button'); r.textContent = '✎'; r.title = 'Rename section';
+          r.onclick = e => { e.stopPropagation(); renameSection(s); };
+          h.append(r);
+          if (!maps.length) {
+            const x = document.createElement('button'); x.textContent = '×'; x.title = 'Remove empty section';
+            x.onclick = e => { e.stopPropagation(); S.sections = S.sections.filter(n => n !== s); delete S.collapsed[s]; saveSettings(); renderMaps(); touchFile(); };
+            h.append(x);
+          }
+        }
+        el.append(h);
+      }
+      if (shut) continue;
+      if (!maps.length && s) { const n = document.createElement('div'); n.className = 'empty'; n.textContent = 'Drag maps here'; el.append(n); }
+      for (const m of maps) {
+        const row = document.createElement('div'); row.className = 'm' + (secs.length > 1 ? ' in' : '');
+        row.draggable = true;
+        row.ondragstart = e => { e.dataTransfer.setData(MAP_DND, m.id); e.dataTransfer.effectAllowed = 'move'; };
+        const b = document.createElement('button'); b.textContent = m.name; b.title = m.name;
+        if (S.cur && S.cur.id === m.id) b.className = 'on';
+        b.onclick = () => openMap(m.id);
+        const d = document.createElement('button'); d.textContent = '×'; d.title = 'Delete map';
+        d.onclick = () => deleteMap(m.id);
+        row.append(b, d); el.append(row);
+      }
+    }
+    $('pendRow').hidden = !S.pending;
+    if (S.pending) $('bPend').textContent = `Choose image for “${S.pending.name}”…`;
+  }
+  function renderMarkers() {
+    const el = $('mk'), c = S.cur; el.textContent = '';
+    $('mkNote').textContent = c && c.markers.length
+      ? 'Tick a marker to show it on the player screen.'
+      : 'No markers yet. Press M and click the map to add one.';
+    if (!c) return;
+    c.markers.forEach((m, i) => {
+      const row = document.createElement('div'); row.className = 'mk';
+      const dot = document.createElement('i'); dot.style.background = COLORS[i % COLORS.length];
+      const name = document.createElement('input'); name.type = 'text'; name.value = m.name || ''; name.placeholder = `Marker ${i + 1}`;
+      name.oninput = () => { m.name = name.value.trim(); postMarkers(); dirty(); scheduleSave(); };
+      const show = document.createElement('input'); show.type = 'checkbox'; show.checked = m.show; show.title = 'Show on the player screen';
+      show.onchange = () => { m.show = show.checked; postMarkers(); dirty(); scheduleSave(); };
+      const del = document.createElement('button'); del.textContent = '×'; del.title = 'Remove marker';
+      del.onclick = () => removeMarker(m);
+      row.append(dot, name, show, del); el.append(row);
+    });
+  }
+  function removeMarker(m) {
+    const c = S.cur, i = c.markers.indexOf(m);
+    if (i < 0) return;
+    c.markers.splice(i, 1);
+    renderMarkers(); postMarkers(); postVis(); dirty(); scheduleSave();
+  }
+
+  /* ----- drawing ----- */
+  function resize() {
+    const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1;
+    vw = Math.max(1, r.width); vh = Math.max(1, r.height);
+    cv.width = Math.round(vw * d); cv.height = Math.round(vh * d);
+    dirty();
+  }
+  function draw() {
+    raf = 0;
+    const d = devicePixelRatio || 1, c = S.cur;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#0d0f12'; ctx.fillRect(0, 0, cv.width, cv.height);
+    if (!c) {
+      ctx.setTransform(d, 0, 0, d, 0, 0);
+      ctx.fillStyle = '#8a93a3'; ctx.font = '16px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('Add a map to begin: drop a scene file and its image here', vw / 2, vh / 2);
+      return;
+    }
+    const k = 1 / G.scale;   // one screen pixel in map units
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    ctx.translate(vw / 2, vh / 2); ctx.scale(G.scale, G.scale); ctx.translate(-G.cx, -G.cy);
+    ctx.drawImage(c.img, 0, 0, c.w, c.h);
+    if (S.gridOn) drawGrid(ctx, c.w, c.h, c.grid, k);
+    // GM sees hidden areas greyed out and dimmed rather than black.
+    ctx.globalCompositeOperation = 'saturation'; ctx.drawImage(c.fog, 0, 0, c.w, c.h);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.55; ctx.drawImage(c.fog, 0, 0, c.w, c.h); ctx.globalAlpha = 1;
+
+    // current line of sight of each marker
+    ctx.lineWidth = 1.5 * k; ctx.strokeStyle = 'rgba(255,240,150,.55)';
+    for (const m of c.markers) {
+      const p = m.poly; if (!p || p.length < 6) continue;
+      ctx.beginPath(); ctx.moveTo(p[0], p[1]);
+      for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
+      ctx.closePath(); ctx.stroke();
+    }
+
+    if (S.showWalls || S.tool === 'wall' || S.tool === 'door' || S.tool === 'erase') {
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (const w of c.walls) if (!w.door && w.sight) { ctx.moveTo(w.c[0], w.c[1]); ctx.lineTo(w.c[2], w.c[3]); }
+      ctx.lineWidth = 2 * k; ctx.strokeStyle = '#ffd24a'; ctx.stroke();
+      ctx.beginPath();
+      for (const w of c.walls) if (!w.door && !w.sight) { ctx.moveTo(w.c[0], w.c[1]); ctx.lineTo(w.c[2], w.c[3]); }
+      ctx.setLineDash([6 * k, 6 * k]); ctx.strokeStyle = '#9aa3b2'; ctx.stroke(); ctx.setLineDash([]);
+    }
+    // doors are always shown
+    for (const w of c.walls) if (w.door) {
+      const col = w.open ? '#4ade80' : (w.door === 2 ? '#c084fc' : '#ff8a3d');
+      ctx.beginPath(); ctx.moveTo(w.c[0], w.c[1]); ctx.lineTo(w.c[2], w.c[3]);
+      ctx.lineWidth = (w.open ? 2 : 5) * k; ctx.strokeStyle = col;
+      if (w.open) ctx.setLineDash([5 * k, 5 * k]);
+      ctx.stroke(); ctx.setLineDash([]);
+      const mx = (w.c[0] + w.c[2]) / 2, my = (w.c[1] + w.c[3]) / 2, s = 6 * k;
+      // Hollow handle = a see-through door (bars or a gate) that never blocks vision.
+      ctx.fillStyle = w.sight ? col : '#14161a'; ctx.fillRect(mx - s, my - s, 2 * s, 2 * s);
+      ctx.lineWidth = (w.sight ? 1.5 : 2.5) * k; ctx.strokeStyle = w.sight ? '#000' : col; ctx.strokeRect(mx - s, my - s, 2 * s, 2 * s);
+    }
+
+    // markers
+    const mr = Math.max(c.grid * 0.32, 9 * k);
+    c.markers.forEach((m, i) => {
+      ctx.beginPath(); ctx.arc(m.x, m.y, mr, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS[i % COLORS.length]; ctx.fill();
+      ctx.lineWidth = 2.5 * k; ctx.strokeStyle = (drag && drag.m === m && drag.blocked) ? '#ff3b3b' : '#fff'; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = `bold ${mr * 1.1}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(i + 1), m.x, m.y + mr * 0.05);
+      const label = (m.name || '') + (m.show ? '' : ' (GM only)');
+      if (label) {
+        const fs = Math.max(c.grid * 0.26, 12 * k);
+        ctx.font = `bold ${fs}px system-ui`; ctx.textBaseline = 'top'; ctx.lineJoin = 'round';
+        ctx.lineWidth = fs * 0.28; ctx.strokeStyle = '#000'; ctx.strokeText(label, m.x, m.y + mr * 1.25);
+        ctx.fillStyle = m.show ? '#fff' : '#b8c0cc'; ctx.fillText(label, m.x, m.y + mr * 1.25);
+      }
+    });
+
+    // player viewport
+    {
+      const odd = c.cam.rot % 2;
+      const w = (odd ? P.vh : P.vw) / c.cam.scale, h = (odd ? P.vw : P.vh) / c.cam.scale;
+      ctx.setLineDash([10 * k, 6 * k]); ctx.lineWidth = 2 * k;
+      ctx.strokeStyle = S.frozen ? '#ff8a3d' : '#35e0ff';
+      ctx.strokeRect(c.cam.cx - w / 2, c.cam.cy - h / 2, w, h); ctx.setLineDash([]);
+      ctx.fillStyle = ctx.strokeStyle; ctx.font = `${12 * k}px system-ui`; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+      ctx.fillText(S.frozen ? 'Player view (frozen)' : S.blank ? 'Player view (blank)' : 'Player view', c.cam.cx - w / 2, c.cam.cy - h / 2 - 3 * k);
+    }
+
+    // tool previews
+    if (drag && drag.k === 'rect') {
+      ctx.lineWidth = 1.5 * k; ctx.strokeStyle = drag.mode === 'hide' ? '#ff6b6b' : '#7dffa0';
+      ctx.strokeRect(drag.a.x, drag.a.y, drag.b.x - drag.a.x, drag.b.y - drag.a.y);
+    }
+    if (hover && (S.tool === 'reveal' || S.tool === 'hide')) {
+      ctx.beginPath(); ctx.arc(hover.x, hover.y, S.brushSq * c.grid / 2, 0, Math.PI * 2);
+      ctx.lineWidth = 1.5 * k; ctx.strokeStyle = S.tool === 'hide' ? '#ff6b6b' : '#7dffa0'; ctx.stroke();
+    }
+    if (hover && (S.tool === 'wall' || S.tool === 'door')) {
+      const p = hover.snap || hover;
+      if (chainPt) {
+        ctx.beginPath(); ctx.moveTo(chainPt.x, chainPt.y); ctx.lineTo(p.x, p.y);
+        ctx.lineWidth = 2 * k; ctx.strokeStyle = S.tool === 'door' ? '#ff8a3d' : '#fff'; ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4 * k, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+    }
+    pings = pings.filter(p => performance.now() - p.t0 < 3000);
+    if (drawPings(ctx, pings, c.grid, k)) dirty();
+  }
+
+  /* ----- pointer input ----- */
+  function hitMarker(p) {
+    const c = S.cur, r = Math.max(c.grid * 0.32, 9 / G.scale) * 1.15;
+    for (let i = c.markers.length - 1; i >= 0; i--)
+      if (Math.hypot(c.markers[i].x - p.x, c.markers[i].y - p.y) <= r) return c.markers[i];
+    return null;
+  }
+  function hitWall(p, doorsOnly) {
+    let best = null, bd = 10 / G.scale;
+    for (const w of S.cur.walls) {
+      if (doorsOnly && !w.door) continue;
+      const d = distSeg(p, w.c);
+      if (d < bd) { bd = d; best = w; }
+    }
+    return best;
+  }
+  function snapPt(p, free) {
+    const c = S.cur, tol = 10 / G.scale;
+    let best = null, bd = tol;
+    for (const w of c.walls) for (let i = 0; i < 4; i += 2) {
+      const d = Math.hypot(w.c[i] - p.x, w.c[i + 1] - p.y);
+      if (d < bd) { bd = d; best = { x: w.c[i], y: w.c[i + 1] }; }
+    }
+    if (best) return best;
+    if (free) return { x: Math.round(p.x), y: Math.round(p.y) };
+    const h = c.grid / 2;
+    return { x: Math.round(p.x / h) * h, y: Math.round(p.y / h) * h };
+  }
+  function inPlayerRect(p) {
+    const c = S.cur, odd = c.cam.rot % 2;
+    const w = (odd ? P.vh : P.vw) / c.cam.scale, h = (odd ? P.vw : P.vh) / c.cam.scale;
+    return Math.abs(p.x - c.cam.cx) <= w / 2 && Math.abs(p.y - c.cam.cy) <= h / 2;
+  }
+  const brushOp = (mode, a, b) => ({ t: 'brush', mode, r: S.brushSq * S.cur.grid / 2,
+    a: [Math.round(a.x), Math.round(a.y)], b: [Math.round(b.x), Math.round(b.y)] });
+
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+  cv.addEventListener('pointerdown', e => {
+    const c = S.cur; if (!c) return;
+    cv.setPointerCapture(e.pointerId);
+    const p = toMap(e);
+    const startPan = () => { drag = { k: 'pan', sx: e.clientX, sy: e.clientY, cx: G.cx, cy: G.cy }; };
+    if (e.button === 2) {
+      const m = hitMarker(p);
+      if (m) { removeMarker(m); return; }
+      if (chainPt) { chainPt = null; dirty(); return; }
+      return startPan();
+    }
+    if (e.button === 1 || space) return startPan();
+    if (e.button !== 0) return;
+    if (e.shiftKey) {   // Shift+click centres the player view; Shift+drag slides it
+      drag = { k: 'pview', a: p, cx: c.cam.cx, cy: c.cam.cy, sx: e.clientX, sy: e.clientY, click: true };
+      return;
+    }
+    if (e.ctrlKey || e.metaKey) { ping(p); return; }
+    switch (S.tool) {
+      case 'ping': ping(p); break;
+      case 'select': {
+        const m = hitMarker(p);
+        if (m) { drag = { k: 'marker', m, last: { x: m.x, y: m.y }, ox: m.x - p.x, oy: m.y - p.y, blocked: false }; break; }
+        const d = hitWall(p, true);
+        if (d) { d.open = !d.open; refreshLos(true); scheduleSave(); break; }
+        startPan(); break;
+      }
+      case 'marker': {
+        const m = { x: p.x, y: p.y, name: '', show: true };
+        c.markers.push(m); m.poly = visPoly(m.x, m.y, c.segs); revealMarker(m);
+        renderMarkers(); postMarkers(); postVis();
+        setTool('select'); break;
+      }
+      case 'reveal': case 'hide':
+        drag = { k: 'brush', mode: S.tool, last: p }; emit(brushOp(S.tool, p, p)); break;
+      case 'rrect': case 'hrect':
+        drag = { k: 'rect', mode: S.tool === 'hrect' ? 'hide' : 'reveal', a: p, b: p }; break;
+      case 'pview':
+        if (!inPlayerRect(p)) setCam({ cx: p.x, cy: p.y });
+        drag = { k: 'pview', a: p, cx: c.cam.cx, cy: c.cam.cy }; break;
+      case 'wall': case 'door': {
+        const s = snapPt(p, e.altKey);
+        if (chainPt && (chainPt.x !== s.x || chainPt.y !== s.y)) {
+          const w = { c: [chainPt.x, chainPt.y, s.x, s.y], door: S.tool === 'door' ? 1 : 0, open: false, sight: true };
+          c.walls.push(w); S.added.push(w);
+          chainPt = S.tool === 'wall' ? s : null;
+          refreshLos(false); scheduleSave();
+        } else chainPt = s;
+        dirty(); break;
+      }
+      case 'erase': {
+        const w = hitWall(p, false);
+        if (w) { c.walls.splice(c.walls.indexOf(w), 1); refreshLos(false); scheduleSave(); }
+        break;
+      }
+    }
+  });
+  cv.addEventListener('pointermove', e => {
+    const c = S.cur; if (!c) return;
+    const p = toMap(e);
+    hover = p;
+    if (S.tool === 'wall' || S.tool === 'door') hover.snap = snapPt(p, e.altKey);
+    if (drag) switch (drag.k) {
+      case 'pan':
+        G.cx = drag.cx - (e.clientX - drag.sx) / G.scale; G.cy = drag.cy - (e.clientY - drag.sy) / G.scale; break;
+      case 'marker': {
+        const m = drag.m, nx = p.x + drag.ox, ny = p.y + drag.oy;
+        // Crossing a wall pauses revealing until the marker is dropped.
+        if (!drag.blocked) for (const s of c.segs) if (segHit(drag.last.x, drag.last.y, nx, ny, s)) { drag.blocked = true; break; }
+        m.x = nx; m.y = ny; drag.last = { x: nx, y: ny };
+        m.poly = visPoly(nx, ny, c.segs);
+        if (!drag.blocked) { revealMarker(m); postVis(); }
+        postMarkers();
+        break;
+      }
+      case 'brush': emit(brushOp(drag.mode, drag.last, p)); drag.last = p; break;
+      case 'rect': drag.b = p; break;
+      case 'pview':
+        if (drag.click && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 4) drag.click = false;
+        if (!drag.click) setCam({ cx: drag.cx + (p.x - drag.a.x), cy: drag.cy + (p.y - drag.a.y) });
+        break;
+    }
+    dirty();
+  });
+  const endDrag = () => {
+    const d = drag; drag = null;
+    if (!d || !S.cur) return;
+    if (d.k === 'marker') { if (d.blocked) revealMarker(d.m); postVis(); scheduleSave(); }
+    if (d.k === 'pview' && d.click) setCam({ cx: d.a.x, cy: d.a.y });
+    if (d.k === 'rect') {
+      const x = Math.min(d.a.x, d.b.x), y = Math.min(d.a.y, d.b.y), w = Math.abs(d.b.x - d.a.x), h = Math.abs(d.b.y - d.a.y);
+      if (w > 2 && h > 2) emit({ t: 'rect', mode: d.mode, x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) });
+    }
+    dirty();
+  };
+  cv.addEventListener('pointerup', endDrag);
+  cv.addEventListener('pointercancel', endDrag);
+  cv.addEventListener('pointerleave', () => { hover = null; dirty(); });
+  cv.addEventListener('wheel', e => {
+    e.preventDefault();
+    const c = S.cur; if (!c) return;
+    const f = Math.exp(-(e.deltaY || e.deltaX) * 0.0015);
+    if (e.shiftKey) { setCam({ scale: c.cam.scale * f }); return; }
+    const p = toMap(e);
+    const ns = Math.max(0.02, Math.min(20, G.scale * f));
+    G.cx = p.x - (p.x - G.cx) * G.scale / ns; G.cy = p.y - (p.y - G.cy) * G.scale / ns; G.scale = ns;
+    dirty();
+  }, { passive: false });
+
+  /* ----- keyboard ----- */
+  const KEYS = { v: 'select', m: 'marker', r: 'reveal', h: 'hide', t: 'rrect', y: 'hrect', p: 'pview', w: 'wall', d: 'door', e: 'erase', x: 'ping' };
+  addEventListener('keydown', e => {
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    if (e.code === 'Space') { space = true; e.preventDefault(); return; }
+    if (e.key === 'Escape') { chainPt = null; dirty(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      const c = S.cur, w = S.added.pop();
+      if (c && w) { const i = c.walls.indexOf(w); if (i >= 0) c.walls.splice(i, 1); chainPt = null; refreshLos(false); scheduleSave(); }
+      e.preventDefault(); return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === '[') setBrush(S.brushSq - 0.5);
+    else if (e.key === ']') setBrush(S.brushSq + 0.5);
+    else if (KEYS[e.key.toLowerCase()]) setTool(KEYS[e.key.toLowerCase()]);
+  });
+  addEventListener('keyup', e => { if (e.code === 'Space') space = false; });
+
+  /* ----- sidebar ----- */
+  function setTool(t) {
+    S.tool = t; chainPt = null;
+    for (const b of $('tools').children) b.classList.toggle('on', b.dataset.tool === t);
+    cv.style.cursor = t === 'select' ? 'default' : 'crosshair';
+    dirty();
+  }
+  function setBrush(v) {
+    S.brushSq = Math.max(0.5, Math.min(12, v));
+    $('rBrush').value = S.brushSq; $('brushVal').textContent = S.brushSq;
+    saveSettings(); dirty();
+  }
+  function syncInputs() {
+    const c = S.cur;
+    $('tName').value = c ? c.name : ''; $('tSec').value = c ? c.section || '' : ''; $('nGrid').value = c ? c.grid : ''; $('nDist').value = c ? c.dist : '';
+    $('nRadius').value = c ? c.radius || 0 : 0;
+    $('cWalls').checked = S.showWalls; $('cGrid').checked = S.gridOn; $('nTv').value = S.tv; $('cDim').checked = S.dim;
+    $('bFreeze').classList.toggle('on', S.frozen); $('bBlank').classList.toggle('on', S.blank);
+    $('bFreeze').textContent = S.frozen ? 'Frozen' : 'Freeze';
+    $('bBlank').textContent = S.blank ? 'Blanked' : 'Blank';
+  }
+  $('tools').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTool(b.dataset.tool); });
+  $('rBrush').oninput = e => setBrush(+e.target.value);
+  $('bAdd').onclick = () => $('fPick').click();
+  $('bAddSec').onclick = addSection;
+  $('bPend').onclick = () => $('iPick').click();
+  $('fPick').onchange = e => { importFiles(e.target.files); e.target.value = ''; };
+  $('iPick').onchange = e => { importFiles(e.target.files); e.target.value = ''; };
+  $('bOpen').onclick = () => {
+    if (P.win && !P.win.closed) { try { P.win.focus(); } catch (e) {} sendFull(); return; }
+    P.win = window.open(location.href.split('#')[0] + '#player', 'tablefog-player', 'popup=yes,width=1280,height=720');
+    if (!P.win) toast('The browser blocked the player window. Allow pop-ups for this page and try again.', 6000);
+  };
+  $('bFreeze').onclick = () => { S.frozen = !S.frozen; syncInputs(); dirty(); if (!S.frozen) sendFull(); };
+  $('bBlank').onclick = () => { S.blank = !S.blank; syncInputs(); dirty(); post({ t: 'opts', opts: playerOpts() }, true); };
+  $('bZoomIn').onclick = () => S.cur && setCam({ scale: S.cur.cam.scale * 1.25 });
+  $('bZoomOut').onclick = () => S.cur && setCam({ scale: S.cur.cam.scale / 1.25 });
+  $('bFit').onclick = () => S.cur && setCam(fitCam(S.cur));
+  $('bInch').onclick = () => S.cur && setCam({ scale: ppi() / S.cur.grid });
+  $('bRot').onclick = () => S.cur && setCam({ rot: (S.cur.cam.rot + 1) % 4 });
+  $('bHere').onclick = () => S.cur && setCam({ cx: G.cx, cy: G.cy });
+  $('nTv').onchange = e => { S.tv = Math.max(5, +e.target.value || 55); saveSettings(); updatePlayerUI(); };
+  $('nRadius').onchange = e => { if (S.cur) { S.cur.radius = Math.max(0, +e.target.value || 0); postVis(); scheduleSave(); } };
+  $('cDim').onchange = e => { S.dim = e.target.checked; saveSettings(); post({ t: 'opts', opts: playerOpts() }); };
+  $('bFileNew').onclick = fileNew;
+  $('bFileOpen').onclick = fileOpen;
+  $('bFileSave').onclick = fileSaveAs;
+  $('bFileRe').onclick = () => fileConnect(true);
+  $('bFileUn').onclick = async () => {
+    if (!confirm(`Stop saving to “${F.name}”? The file stays where it is, and the campaign stays in this browser.`)) return;
+    if (F.ok) await flushFile();
+    linkHandle(null);
+  };
+  $('cPick').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    try { await saveNow(); await loadCampaign(f); toast(`Opened “${f.name}”`); } catch (err) { toast('Could not open that file: ' + err.message, 7000); }
+  };
+  $('bLook').onclick = () => refreshLos(true);
+  $('bHideAll').onclick = () => { if (S.cur && confirm('Hide the whole map again?')) emit({ t: 'all', mode: 'hide' }); };
+  $('bRevealAll').onclick = () => { if (S.cur && confirm('Reveal the whole map to the players?')) emit({ t: 'all', mode: 'reveal' }); };
+  $('tName').onchange = e => {
+    const c = S.cur, v = e.target.value.trim(); if (!c || !v) return;
+    c.name = v; const l = S.list.find(x => x.id === c.id); if (l) l.name = v;
+    renderMaps(); scheduleSave();
+  };
+  $('tSec').onchange = e => {
+    const c = S.cur; if (!c) return;
+    c.section = e.target.value.trim(); e.target.value = c.section;
+    const l = S.list.find(x => x.id === c.id); if (l) l.section = c.section;
+    delete S.collapsed[c.section];
+    if (c.section && !S.sections.includes(c.section)) { S.sections.push(c.section); saveSettings(); }
+    renderMaps(); scheduleSave();
+  };
+  $('nGrid').onchange = e => {
+    const c = S.cur; if (!c) return;
+    c.grid = Math.max(4, +e.target.value || c.grid);
+    post({ t: 'opts', opts: playerOpts(), grid: c.grid }); postVis(); updatePlayerUI(); dirty(); scheduleSave();
+  };
+  $('nDist').onchange = e => { if (S.cur) { S.cur.dist = Math.max(1, +e.target.value || 5); postVis(); scheduleSave(); } };
+  $('cWalls').onchange = e => { S.showWalls = e.target.checked; saveSettings(); dirty(); };
+  $('cGrid').onchange = e => { S.gridOn = e.target.checked; saveSettings(); dirty(); post({ t: 'opts', opts: playerOpts() }); };
+
+  /* ----- panels: two docks, drag a title to move, minimise ----- */
+  const PANEL_DND = 'application/x-tablefog-panel';
+  const DEFAULT_LAYOUT = () => ({ left: ['player', 'markers'], right: ['campaign', 'maps', 'tools', 'fog', 'map', 'help'], min: {} });
+  const docks = { left: $('left'), right: $('right') };
+  const panels = {};
+  let dragPanel = null;
+  function applyLayout() {
+    const L = S.layout && S.layout.left && S.layout.right ? S.layout : (S.layout = DEFAULT_LAYOUT());
+    L.min = L.min || {};
+    const placed = new Set();
+    for (const side of ['left', 'right']) for (const id of L[side]) if (panels[id] && !placed.has(id)) { docks[side].append(panels[id]); placed.add(id); }
+    const def = DEFAULT_LAYOUT();
+    // A panel added in a newer version is missing from a saved layout: put it at the top of its default side.
+    for (const id in panels) if (!placed.has(id)) docks[def.left.includes(id) ? 'left' : 'right'].prepend(panels[id]);
+    for (const id in panels) {
+      panels[id].classList.toggle('min', !!L.min[id]);
+      panels[id].querySelector('h2 button').textContent = L.min[id] ? '▸' : '▾';
+    }
+    for (const side in docks) docks[side].classList.toggle('empty', !docks[side].querySelector('.panel'));
+  }
+  function storeLayout() {
+    for (const side in docks) S.layout[side] = [...docks[side].querySelectorAll('.panel')].map(p => p.dataset.id);
+    saveSettings(); applyLayout();
+  }
+  for (const p of document.querySelectorAll('.panel')) {
+    const id = p.dataset.id, h = p.querySelector('h2');
+    panels[id] = p;
+    const t = document.createElement('span'); t.textContent = h.textContent; h.textContent = '';
+    const b = document.createElement('button'); b.title = 'Minimise or restore';
+    const toggle = () => { S.layout.min[id] = !S.layout.min[id]; saveSettings(); applyLayout(); };
+    b.onclick = toggle; h.ondblclick = toggle;
+    h.append(t, b);
+    h.draggable = true; h.title = 'Drag to move this panel';
+    h.ondragstart = e => {
+      dragPanel = p;
+      e.dataTransfer.setData(PANEL_DND, id); e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setDragImage(p, 20, 12); } catch (err) {}
+      setTimeout(() => { p.classList.add('drag'); document.body.classList.add('pdrag'); }, 0);
+    };
+    h.ondragend = () => {
+      p.classList.remove('drag'); document.body.classList.remove('pdrag'); dragPanel = null;
+      storeLayout();
+    };
+  }
+  for (const side in docks) {
+    const dock = docks[side];
+    dock.addEventListener('dragover', e => {
+      if (!dragPanel || ![...e.dataTransfer.types].includes(PANEL_DND)) return;
+      e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+      // The dragged panel moves live to where it would land.
+      const before = [...dock.querySelectorAll('.panel')].filter(x => x !== dragPanel)
+        .find(x => { const r = x.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
+      if (before) { if (dragPanel.nextElementSibling !== before || dragPanel.parentNode !== dock) dock.insertBefore(dragPanel, before); }
+      else if (dock.lastElementChild !== dragPanel) dock.append(dragPanel);
+      dock.classList.remove('empty');
+    });
+    dock.addEventListener('drop', e => { if (dragPanel) e.preventDefault(); });
+  }
+  $('bLayout').onclick = () => { S.layout = DEFAULT_LAYOUT(); saveSettings(); applyLayout(); };
+  applyLayout();
+
+  /* ----- drag and drop ----- */
+  let dragDepth = 0;
+  const isFileDrag = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+  addEventListener('dragenter', e => { if (!isFileDrag(e)) return; e.preventDefault(); dragDepth++; $('drop').classList.add('show'); });
+  addEventListener('dragleave', e => { if (isFileDrag(e) && --dragDepth <= 0) { dragDepth = 0; $('drop').classList.remove('show'); } });
+  addEventListener('dragover', e => { if (isFileDrag(e)) e.preventDefault(); });
+  addEventListener('drop', e => {
+    e.preventDefault(); dragDepth = 0; $('drop').classList.remove('show');
+    if (e.dataTransfer && e.dataTransfer.files.length) importFiles(e.dataTransfer.files);
+  });
+
+  /* ----- start ----- */
+  new ResizeObserver(resize).observe(cv);
+  resize(); setTool('select'); setBrush(S.brushSq); syncInputs();
+  window.tablefog = { S, P, G, F, importFiles, openMap, emit, setCam, refreshLos, visPoly, saveNow, ping, buildCampaign, loadCampaign, writeFile, fileConnect };
+  updateFileUI();
+  (async () => {
+    await DB.open();
+    if (!DB.db) toast('Browser storage is unavailable, so maps and fog will not be kept after closing.', 7000);
+    try { S.list = (await DB.all('maps')).map(r => ({ id: r.id, name: r.name, section: r.section || '' })); } catch (e) { S.list = []; }
+    renderMaps();
+    let meta = null;
+    try { meta = await DB.get('meta', 'file'); } catch (e) {}
+    if (meta && meta.handle) {
+      F.handle = meta.handle; F.name = meta.handle.name;
+      await fileConnect(false);   // may load a newer file, which opens its own map
+      if (!F.ok) toast(`Click “Reconnect” in the Campaign panel to keep saving to “${F.name}”`, 8000);
+    }
+    const first = S.list.find(m => m.id === S.lastId) || S.list[0];
+    if (first && !S.cur) await openMap(first.id);
+  })();
+}
+
+IS_PLAYER ? playerMain() : gmMain();
+</script>
+</body>
+</html>
