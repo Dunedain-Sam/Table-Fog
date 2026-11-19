@@ -14,9 +14,12 @@ It is a single HTML file. There is nothing to install, no server and no account,
 - **Draw your own walls and doors** on any map, snapped to the half-grid.
 - **Player view control.** Zoom, pan, rotate 90° and fit the map, or set **1″ grid** to match physical minis on a flat TV. The player view is shown on the GM map as a dashed box.
 - **Ping.** Ctrl+click to flash a marker on the player screen ("you hear something here").
-- **Named markers** shown on the player screen, or hidden as GM-only.
+- **Named markers** in any colour, shown on the player screen or hidden as GM-only.
+- **Saved party.** Save the markers on one map as your party, then press G and click any other map to drop the whole party there.
+- **Spell areas and notes.** Draw circles, cones, lines and squares that snap to whole squares (with sizes shown in feet), plus freehand pen strokes and text notes. Each can be shown to players or kept GM-only.
+- **Images on maps.** Drop image files (monsters, boats, props) onto a map, then move, resize and rotate them. They are kept in an image list so you can reuse them on any map. Hidden parts of the map hide them too.
 - **Map sections.** Group maps into sections (for example by adventure) and drag maps between them.
-- **Campaign file.** Save everything (maps, walls, fog, markers, settings) to one `.tablefog` file that is kept up to date automatically.
+- **Campaign file.** Save everything (maps, walls, fog, markers, drawings, images, party, settings) to one `.tablefog` file that is kept up to date automatically.
 - **Movable panels.** Drag panel titles to rearrange them on either side of the map, and minimise the ones you don't need.
 
 ## Supported maps
@@ -34,8 +37,19 @@ For a Foundry scene, select or drop the `.json` and its image together. If the i
 1. Open `index.html` (or the app's GitHub Pages address) in **Chrome or Edge**. Other modern browsers work too, but cannot keep a campaign file linked.
 2. Click **Add map…** or drop map files onto the window.
 3. Click **Open player window**, drag it to the table screen, then click it or press **F** for fullscreen. Allow pop-ups if the browser blocks it.
-4. Press **M** and click the map to place a party marker, then drag it to explore.
-5. In the Campaign panel, click **Save as…** to create a campaign file so your prep is backed up.
+4. Press **M** and click the map to place a marker for each character, name them, then drag them to explore.
+5. Click **Save as party** in the Party markers panel. On the next map, press **G** and click to place the whole party.
+6. In the Campaign panel, click **Save as…** to create a campaign file so your prep is backed up.
+
+## Drawings and images
+
+- **Spell areas:** pick Circle (O), Cone (C), Line (L) or Square (S) and drag. Circles drag from the centre, cones and lines from their point of origin. Sizes snap to whole squares (hold Alt for free sizes) and the size in feet is shown while you drag. Lines are 5 ft wide.
+- **Notes:** Pen (B) draws freehand; Text (A) adds a note where you click. Double-click a note to edit it.
+- **Colours:** pick one from the swatches before drawing. Picking a colour with a drawing selected recolours it.
+- **Players see new drawings and images** decides whether new items appear on the player screen. Change it for a selected item with **Players see this**. GM-only items look faded and dashed on your screen.
+- **Images:** drop image files onto the map to place them where you drop. Dropping them on the top band adds them as a new map instead. **Add images…** adds them to the image list; click one there, then click the map to place copies (Esc to stop), or drag it onto the map.
+- **Editing:** with Select (V), click an item to select it and drag to move it. Drag an image's corner handle to resize it, Alt+wheel or ⟲ ⟳ to rotate it, or type a size in squares. Delete removes the selected item and Ctrl+Z brings it back.
+- Images placed on maps stay under the fog, so players only see a monster once that area is revealed.
 
 ## Controls
 
@@ -50,11 +64,14 @@ For a Foundry scene, select or drop the `.json` and its image together. If the i
 | Open or close a door | Click it with Select |
 | Brush size | `[` and `]` |
 | End a wall chain | Esc |
-| Undo the last wall | Ctrl+Z |
+| Undo the last wall, drawing, image or delete | Ctrl+Z |
+| Delete the selected drawing or image | Delete |
+| Rotate the selected image | Alt+wheel |
+| Stop placing / deselect | Esc (right-click also stops placing) |
 | Free wall placement (no snapping) | Hold Alt |
 | Fullscreen (player window) | F or click |
 
-**Tool keys:** V select · M marker · R reveal brush · H hide brush · T reveal box · Y hide box · P player view · W wall · D door · E erase wall · X ping
+**Tool keys:** V select · M marker · R reveal brush · H hide brush · T reveal box · Y hide box · P player view · W wall · D door · E erase wall · X ping · O circle · C cone · L line · S square · B pen · A text · G place party
 
 **Player screen buttons:** *Freeze* stops sending changes (useful while you prepare something); *Blank* blacks out the player screen.
 

@@ -52,15 +52,35 @@
   #maps .m[draggable=true] button:first-child { cursor:grab; }
   #maps .empty { color:var(--dim); font-size:12px; margin:2px 0 4px 14px; font-style:italic; }
   #mk .mk { display:flex; gap:5px; align-items:center; margin:4px 0; }
-  #mk .mk i { width:14px; height:14px; border-radius:50%; flex:none; border:2px solid #fff; }
+  #mk .mk input[type=color] { width:20px; height:20px; padding:0; border:2px solid #fff; border-radius:50%; background:none; cursor:pointer; flex:none; }
+  #mk .mk input[type=color]::-webkit-color-swatch-wrapper { padding:0; }
+  #mk .mk input[type=color]::-webkit-color-swatch { border:none; border-radius:50%; }
+  #mk .mk input[type=color]::-moz-color-swatch { border:none; border-radius:50%; }
+  .sw { display:flex; gap:5px; margin:6px 0; }
+  .sw button { flex:1; height:22px; padding:0; border:2px solid #3a404b; }
+  .sw button.on { border-color:#fff; box-shadow:0 0 0 1px #000 inset; }
+  .sub { font-size:11px; text-transform:uppercase; letter-spacing:.8px; color:var(--dim); margin:10px 0 2px; }
+  .lib { display:grid; grid-template-columns:repeat(auto-fill, minmax(52px, 1fr)); gap:5px; margin:6px 0; }
+  .lib .tk { position:relative; aspect-ratio:1; border:1px solid #3a404b; border-radius:5px; background:#111318 center/contain no-repeat; cursor:pointer; }
+  .lib .tk:hover { border-color:#5a6270; }
+  .lib .tk.on { border-color:var(--acc); box-shadow:0 0 0 1px var(--acc); }
+  .lib .tk button { position:absolute; top:1px; right:1px; padding:0 4px; font-size:11px; line-height:14px; border:none; background:#000b; display:none; }
+  .lib .tk:hover button { display:block; }
+  #selBox { border-top:1px solid var(--line); margin-top:8px; padding-top:6px; }
   #mk .mk input[type=text] { flex:1; width:auto; min-width:0; }
   .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#666; margin-right:6px; }
   .dot.ok { background:#3ddc84; }
   .note { color:var(--dim); font-size:12px; margin:5px 0; }
   #toast { position:absolute; left:50%; bottom:18px; transform:translateX(-50%); background:#000c; border:1px solid var(--line); padding:8px 14px; border-radius:6px; pointer-events:none; opacity:0; transition:opacity .25s; max-width:80%; }
   #toast.show { opacity:1; }
-  #drop { position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:#4aa8ff22; border:3px dashed var(--acc); font-size:20px; pointer-events:none; }
+  #drop { position:absolute; inset:0; display:none; flex-direction:column; font-size:18px; pointer-events:none; }
   #drop.show { display:flex; }
+  #drop > div { display:flex; align-items:center; justify-content:center; text-align:center; margin:6px; border:3px dashed #4aa8ff77; border-radius:8px; background:#4aa8ff12; }
+  #drop > div.hot { border-color:var(--acc); background:#4aa8ff38; }
+  #dropMap { height:90px; flex:none; }
+  #dropTok { flex:1; }
+  #drop.nomap #dropMap { flex:1; height:auto; }
+  #drop.nomap #dropTok { display:none; }
   #player { position:fixed; inset:0; background:#000; }
   #pc { width:100%; height:100%; display:block; }
   #phint { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#000a; color:#ccc; padding:8px 14px; border-radius:6px; transition:opacity .6s; font-size:14px; pointer-events:none; }
@@ -124,9 +144,45 @@
     <label class="f">Brush (squares) <input id="rBrush" type="range" min="0.5" max="12" step="0.5"><span id="brushVal"></span></label>
 
     </div></section>
+    <section class="panel" data-id="draw"><h2>Draw &amp; images</h2><div class="pb">
+    <div class="tools">
+      <button data-tool="circle" title="Drag from the centre outwards">Circle <kbd>O</kbd></button>
+      <button data-tool="cone" title="Drag from the point of origin">Cone <kbd>C</kbd></button>
+      <button data-tool="line" title="Drag from the start of the line (5 ft wide)">Line <kbd>L</kbd></button>
+      <button data-tool="rect" title="Drag from corner to corner">Square <kbd>S</kbd></button>
+      <button data-tool="pen" title="Freehand drawing">Pen <kbd>B</kbd></button>
+      <button data-tool="text" title="Click to add a text note">Text <kbd>A</kbd></button>
+    </div>
+    <div class="sw" id="swatches"></div>
+    <label class="f">Players see new drawings and images <input id="cShow" type="checkbox"></label>
+    <div id="selBox" hidden>
+      <div class="note" id="selTxt"></div>
+      <label class="f">Players see this <input id="cSelShow" type="checkbox"></label>
+      <div class="row" id="selTok">
+        <label class="f" style="flex:1;margin:0">Size (squares) <input id="nTokSize" type="number" min="0.25" step="0.25" style="width:64px"></label>
+        <button id="bRotL" title="Rotate left (Alt+wheel)" style="flex:none">⟲</button>
+        <button id="bRotR" title="Rotate right (Alt+wheel)" style="flex:none">⟳</button>
+      </div>
+      <div class="row">
+        <button id="bSelText">Edit text</button>
+        <button id="bSelFront">To front</button>
+        <button id="bSelDel">Delete <kbd>Del</kbd></button>
+      </div>
+    </div>
+    <div class="sub">Images</div>
+    <div class="lib" id="lib"></div>
+    <div class="note" id="libNote"></div>
+    <div class="row"><button id="bAddTok">Add images…</button><button id="bClearDraw">Clear drawings</button></div>
+    <input id="tPick" type="file" multiple hidden accept="image/*">
+    </div></section>
     <section class="panel" data-id="markers"><h2>Party markers</h2><div class="pb">
     <div id="mk"></div>
     <div class="note" id="mkNote">Name a marker and tick its box to show it on the player screen.</div>
+    <div class="row">
+      <button id="bPartySave" title="Remember the markers on this map (names and colours) as your party">Save as party</button>
+      <button data-tool="party" title="Click the map to place every party member who is not on it yet">Place party <kbd>G</kbd></button>
+    </div>
+    <div class="note" id="partyNote"></div>
 
     </div></section>
     <section class="panel" data-id="fog"><h2>Fog</h2><div class="pb">
@@ -159,6 +215,10 @@
       Shift+click: centre the player view there · Shift+drag: slide it<br>
       Shift+wheel: zoom the player view<br>
       Ctrl+click: ping that spot on the player screen<br>
+      Drawings: drag out circles, cones, lines and squares (sizes snap to whole squares; hold Alt for free sizes)<br>
+      Click a drawing or image to select it, then drag to move it; Delete removes it; Alt+wheel rotates an image; drag its corner handle to resize<br>
+      Double-click a text note to edit it<br>
+      Drop image files onto the map to place them; Esc stops placing<br>
       [ and ]: brush size<br>
       Walls snap to the half-grid (hold Alt for free placement); Esc ends a chain; Ctrl+Z undoes the last wall<br>
       Player window: click or press F for fullscreen<br>
@@ -169,7 +229,7 @@
   </div>
   <div id="stage">
     <canvas id="gc"></canvas>
-    <div id="drop">Drop map files here</div>
+    <div id="drop"><div id="dropMap">Drop here to add as a new map</div><div id="dropTok">Drop onto the map to place images on it</div></div>
     <div id="toast"></div>
   </div>
   <div id="right" class="dock"></div>
@@ -257,6 +317,58 @@ function drawPings(ctx, pings, grid, k) {
   ctx.globalAlpha = 1;
   return live;
 }
+/* Drawings and images placed on a map ("shapes"), drawn the same way in both windows. */
+function conePts(s) {   // D&D cone: as wide at its end as it is long
+  const ux = Math.cos(s.ang), uy = Math.sin(s.ang), ex = s.x + ux * s.len, ey = s.y + uy * s.len, h = s.len / 2;
+  return [s.x, s.y, ex - uy * h, ey + ux * h, ex + uy * h, ey - ux * h];
+}
+function linePts(s) {
+  const dx = s.x2 - s.x, dy = s.y2 - s.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l * s.w / 2, ny = dx / l * s.w / 2;
+  return [s.x + nx, s.y + ny, s.x2 + nx, s.y2 + ny, s.x2 - nx, s.y2 - ny, s.x - nx, s.y - ny];
+}
+function polyPath(ctx, p) {
+  ctx.beginPath(); ctx.moveTo(p[0], p[1]);
+  for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
+  ctx.closePath();
+}
+function drawShapes(ctx, list, getImg, grid, k, gm) {
+  const lw = Math.max(grid * 0.035, 2 * k);
+  for (const s of list) {
+    ctx.save();
+    if (gm && !s.show) ctx.globalAlpha *= 0.6;   // GM-only items look faded on the GM screen
+    const a = ctx.globalAlpha;
+    if (s.k === 'token') {
+      ctx.translate(s.x, s.y); ctx.rotate((s.rot || 0) * Math.PI / 180);
+      const im = getImg(s.img);
+      if (im) ctx.drawImage(im, -s.w / 2, -s.h / 2, s.w, s.h);
+      else { ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fillRect(-s.w / 2, -s.h / 2, s.w, s.h); }
+      ctx.restore(); continue;
+    }
+    ctx.strokeStyle = ctx.fillStyle = s.color || '#ff5a36';
+    ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    if (gm && !s.show) ctx.setLineDash([8 * k, 6 * k]);
+    const area = () => { ctx.globalAlpha = a * 0.28; ctx.fill(); ctx.globalAlpha = a; ctx.stroke(); };
+    switch (s.k) {
+      case 'circle': ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); area(); break;
+      case 'rect': ctx.beginPath(); ctx.rect(Math.min(s.x, s.x2), Math.min(s.y, s.y2), Math.abs(s.x2 - s.x), Math.abs(s.y2 - s.y)); area(); break;
+      case 'cone': polyPath(ctx, conePts(s)); area(); break;
+      case 'line': polyPath(ctx, linePts(s)); area(); break;
+      case 'pen': {
+        const p = s.pts;
+        ctx.beginPath(); ctx.moveTo(p[0], p[1]);
+        for (let i = 2; i < p.length; i += 2) ctx.lineTo(p[i], p[i + 1]);
+        if (p.length === 2) ctx.lineTo(p[0] + 0.01, p[1]);
+        ctx.lineWidth = s.w; ctx.stroke(); break;
+      }
+      case 'text':
+        ctx.setLineDash([]);
+        ctx.font = `bold ${s.size}px system-ui,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.lineWidth = s.size * 0.2; ctx.strokeStyle = '#000'; ctx.strokeText(s.text, s.x, s.y); ctx.fillText(s.text, s.x, s.y);
+        break;
+    }
+    ctx.restore();
+  }
+}
 function loadImage(blob) {
   // onload rather than img.decode(): decode() can stall while a window is in the background.
   return new Promise((res, rej) => {
@@ -279,7 +391,13 @@ function playerMain() {
   document.title = 'Table Fog – Players';
   $('player').hidden = false;
   const cv = $('pc'), ctx = cv.getContext('2d');
-  let map = null, cam = { cx: 0, cy: 0, scale: 1, rot: 0 }, opts = { blank: false, grid: false }, markers = [], vis = [], pings = [];
+  let map = null, cam = { cx: 0, cy: 0, scale: 1, rot: 0 }, opts = { blank: false, grid: false }, markers = [], vis = [], pings = [], shapes = [];
+  const tokImgs = new Map();   // image id -> decoded image, kept across maps
+  async function loadImgs(imgs) {
+    for (const id in imgs || {}) if (!tokImgs.has(id)) {
+      try { tokImgs.set(id, await loadImage(imgs[id])); } catch (e) { tokImgs.set(id, null); }
+    }
+  }
   const setVis = () => {
     if (!map) return;
     if (!map.vis) { map.vis = document.createElement('canvas'); map.vis.width = map.fog.width; map.vis.height = map.fog.height; }
@@ -310,6 +428,8 @@ function playerMain() {
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(map.img, 0, 0, map.w, map.h);
     if (opts.grid) drawGrid(ctx, map.w, map.h, map.grid, 1 / cam.scale);
+    // Under the fog, so monsters and spell areas in unexplored parts stay hidden.
+    drawShapes(ctx, shapes, id => tokImgs.get(id), map.grid, 1 / cam.scale, false);
     if (opts.dim && vis.length && map.vis) {   // explored but out of sight: grey and dimmed
       ctx.globalCompositeOperation = 'saturation'; ctx.globalAlpha = 0.85; ctx.drawImage(map.vis, 0, 0, map.w, map.h);
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 0.5; ctx.drawImage(map.vis, 0, 0, map.w, map.h);
@@ -335,6 +455,7 @@ function playerMain() {
     switch (m.t) {
       case 'map':
         markers = m.markers || []; vis = m.vis || []; pings = [];
+        await loadImgs(m.imgs); shapes = m.shapes || [];
         if (!m.id) { map = null; break; }
         {
           const img = (map && map.id === m.id) ? map.img : await loadImage(m.blob);
@@ -352,6 +473,7 @@ function playerMain() {
         }
         break;
       case 'vis': vis = m.list || []; setVis(); break;
+      case 'shapes': await loadImgs(m.imgs); shapes = m.list || []; break;
       case 'ping': pings.push({ x: m.x, y: m.y, t0: performance.now() }); break;
       case 'op': if (map) applyOp(map.fog, map.w, map.h, m.op); break;
       case 'cam': cam = m.cam; break;
@@ -394,8 +516,13 @@ function gmMain() {
     list: [], cur: null, tool: 'select', frozen: false, blank: false,
     brushSq: 2, showWalls: true, gridOn: false, tv: 55, lastId: null, dim: true,
     pending: null, added: [], collapsed: {}, sections: [], layout: null,
+    drawColor: '#ff5a36', drawShow: true, sel: null, placing: null, library: [], party: [],
   };
-  let pings = [], visQ = false;
+  let pings = [], visQ = false, shapeQ = false;
+  const tokImgs = new Map();   // image id -> { blob, img } for images placed on maps
+  const tokImg = id => { const t = tokImgs.get(id); return t ? t.img : null; };
+  const TOK_DND = 'application/x-tablefog-token';
+  const SHAPE_COLORS = ['#ff5a36', '#ffb020', '#3ddc84', '#35a7ff', '#b56cff', '#ffffff', '#111111'];
   const MAP_DND = 'application/x-tablefog-map';
   const P = { win: null, vw: 1920, vh: 1080, sw: 1920, sh: 1080, seen: 0, syncing: false, queue: [] };
   const G = { cx: 0, cy: 0, scale: 1 };   // GM camera
@@ -404,12 +531,12 @@ function gmMain() {
   /* ----- settings ----- */
   try {
     const st = JSON.parse(localStorage.getItem('tablefog.settings') || '{}');
-    for (const k of ['brushSq', 'showWalls', 'gridOn', 'tv', 'lastId', 'dim', 'collapsed', 'sections', 'layout']) if (st[k] !== undefined) S[k] = st[k];
+    for (const k of ['brushSq', 'showWalls', 'gridOn', 'tv', 'lastId', 'dim', 'drawColor', 'drawShow', 'collapsed', 'sections', 'layout']) if (st[k] !== undefined) S[k] = st[k];
   } catch (e) {}
   function saveSettings() {
     try {
       localStorage.setItem('tablefog.settings', JSON.stringify({
-        brushSq: S.brushSq, showWalls: S.showWalls, gridOn: S.gridOn, tv: S.tv, lastId: S.lastId, dim: S.dim, collapsed: S.collapsed, sections: S.sections, layout: S.layout }));
+        brushSq: S.brushSq, showWalls: S.showWalls, gridOn: S.gridOn, tv: S.tv, lastId: S.lastId, dim: S.dim, drawColor: S.drawColor, drawShow: S.drawShow, collapsed: S.collapsed, sections: S.sections, layout: S.layout }));
     } catch (e) {}
   }
 
@@ -555,8 +682,24 @@ function gmMain() {
   }
   const playerOpts = () => ({ blank: S.blank, grid: S.gridOn, dim: S.dim });
   const playerMarkers = c => c.markers
-    .map((m, i) => ({ x: Math.round(m.x), y: Math.round(m.y), name: m.name || '', color: COLORS[i % COLORS.length], show: m.show }))
+    .map(m => ({ x: Math.round(m.x), y: Math.round(m.y), name: m.name || '', color: m.color, show: m.show }))
     .filter(m => m.show);
+  const playerShapes = c => c.shapes.filter(s => s.show);
+  function shapeBlobs(list) {
+    const o = {};
+    for (const s of list) if (s.k === 'token' && tokImgs.get(s.img)) o[s.img] = tokImgs.get(s.img).blob;
+    return o;
+  }
+  function postShapes() {
+    if (shapeQ) return;
+    shapeQ = true;
+    requestAnimationFrame(() => {
+      shapeQ = false;
+      if (!S.cur) return;
+      const l = playerShapes(S.cur);
+      post({ t: 'shapes', list: l, imgs: shapeBlobs(l) });
+    });
+  }
   const postMarkers = () => { if (S.cur) post({ t: 'markers', list: playerMarkers(S.cur) }); };
   async function sendFull() {
     if (!P.win || P.win.closed || S.frozen || P.syncing) return;
@@ -566,7 +709,8 @@ function gmMain() {
     const fog = await new Promise(r => c.fog.toBlob(r, 'image/png'));
     P.syncing = false;
     if (S.cur !== c) return sendFull();
-    post({ t: 'map', id: c.id, blob: c.image, w: c.w, h: c.h, grid: c.grid, fog, cam: c.cam, opts: playerOpts(), markers: playerMarkers(c), vis: visList(c) });
+    post({ t: 'map', id: c.id, blob: c.image, w: c.w, h: c.h, grid: c.grid, fog, cam: c.cam, opts: playerOpts(), markers: playerMarkers(c), vis: visList(c),
+                shapes: playerShapes(c), imgs: shapeBlobs(playerShapes(c)) });
     for (const op of P.queue) post({ t: 'op', op });
     P.queue = [];
   }
@@ -614,7 +758,8 @@ function gmMain() {
     try {
       await DB.put('maps', {
         id: c.id, name: c.name, section: c.section || '', w: c.w, h: c.h, grid: c.grid, dist: c.dist, walls: c.walls,
-        markers: c.markers.map(m => ({ x: m.x, y: m.y, name: m.name || '', show: m.show })), cam: c.cam, radius: c.radius, fog });
+        markers: c.markers.map(m => ({ x: m.x, y: m.y, name: m.name || '', color: m.color, show: m.show })),
+        shapes: c.shapes, cam: c.cam, radius: c.radius, fog });
       touchFile();
     } catch (e) { console.error(e); toast('Could not save: ' + e.message); }
   }
@@ -650,11 +795,16 @@ function gmMain() {
     const parts = [];
     let off = 0;
     const add = b => { if (!b) return null; const e = { off, size: b.size, type: b.type }; parts.push(b); off += b.size; return e; };
-    const head = { app: APP, version: 1, saved: new Date().toISOString(), sections: S.sections, collapsed: S.collapsed, lastId: S.lastId, maps: [] };
+    const head = { app: APP, version: 1, saved: new Date().toISOString(), sections: S.sections, collapsed: S.collapsed, lastId: S.lastId,
+                   library: S.library, party: S.party, maps: [], images: [] };
+    const mapIds = new Set();
     for (const r of await DB.all('maps')) {
+      mapIds.add(r.id);
       const im = await DB.get('images', r.id);
       if (im && im.blob) head.maps.push({ ...r, fog: add(r.fog), image: add(im.blob) });
     }
+    // Images placed on maps (monsters, boats, props), kept apart from the map backgrounds.
+    for (const im of await DB.all('images')) if (!mapIds.has(im.id) && im.blob) head.images.push({ id: im.id, image: add(im.blob) });
     const hb = new TextEncoder().encode(JSON.stringify(head));
     return new Blob([`TABLEFOG 1 ${hb.length}\n`, hb, ...parts], { type: 'application/octet-stream' });
   }
@@ -695,8 +845,12 @@ function gmMain() {
       await DB.put('images', { id: r.id, blob: image }); await DB.put('maps', rec);
       S.list.push({ id: r.id, name: r.name, section: r.section || '' });
     }
+    for (const r of head.images || []) { const b = await cut(r.image); if (b) await DB.put('images', { id: r.id, blob: b }); }
+    S.library = head.library || []; S.party = head.party || []; S.sel = null;
+    await DB.put('meta', { id: 'library', items: S.library }); await DB.put('meta', { id: 'party', list: S.party });
+    tokImgs.clear(); await Promise.all(S.library.map(it => ensureTok(it.id)));
     S.sections = head.sections || []; S.collapsed = head.collapsed || {}; S.lastId = head.lastId || null;
-    saveSettings(); renderMaps(); renderMarkers(); syncInputs(); dirty();
+    saveSettings(); renderMaps(); renderMarkers(); renderLib(); renderSel(); syncInputs(); dirty();
     const first = S.list.find(x => x.id === S.lastId) || S.list[0];
     if (first) await openMap(first.id); else sendFull();
   }
@@ -774,8 +928,9 @@ function gmMain() {
     await flushFile();
     await linkHandle(null);
     clearTimeout(saveT); S.cur = null; S.list = []; S.sections = []; S.collapsed = {}; S.lastId = null; S.pending = null;
-    await DB.clear('maps'); await DB.clear('images');
-    saveSettings(); renderMaps(); renderMarkers(); syncInputs(); updatePlayerUI(); dirty(); sendFull();
+    S.library = []; S.party = []; S.sel = null; tokImgs.clear();
+    await DB.clear('maps'); await DB.clear('images'); await DB.del('meta', 'library'); await DB.del('meta', 'party');
+    saveSettings(); renderMaps(); renderMarkers(); renderLib(); renderSel(); syncInputs(); updatePlayerUI(); dirty(); sendFull();
   }
 
   /* ----- importing ----- */
@@ -821,7 +976,7 @@ function gmMain() {
     await DB.put('images', { id, blob: image });
     const section = S.cur ? S.cur.section || '' : '';   // new maps join the section of the open map
     await DB.put('maps', { id, name: sc.name, section, w: sc.w, h: sc.h, grid: sc.grid || 70, dist: sc.dist || 5,
-                           walls: sc.walls || [], markers: [], cam: null, radius: 0, fog: null });
+                           walls: sc.walls || [], markers: [], shapes: [], cam: null, radius: 0, fog: null });
     S.list.push({ id, name: sc.name, section });
     touchFile();
     return id;
@@ -880,12 +1035,14 @@ function gmMain() {
         x.clearRect(0, 0, c.fog.width, c.fog.height); x.drawImage(f, 0, 0, c.fog.width, c.fog.height);
       } catch (e) {}
     }
-    c.markers = (c.markers || []).map(m => ({ x: m.x, y: m.y, name: m.name || '', show: m.show !== false }));
+    c.markers = (c.markers || []).map((m, i) => ({ x: m.x, y: m.y, name: m.name || '', color: m.color || COLORS[i % COLORS.length], show: m.show !== false }));
+    c.shapes = c.shapes || [];
+    await Promise.all([...new Set(c.shapes.filter(s => s.k === 'token').map(s => s.img))].map(ensureTok));
     c.section = c.section || '';
     c.cam = Object.assign({ rot: 0 }, c.cam || {});
     if (!c.cam.scale) Object.assign(c.cam, fitCam(c));
-    S.cur = c; S.lastId = id; S.added = []; chainPt = null; drag = null;
-    saveSettings();
+    S.cur = c; S.lastId = id; S.added = []; S.sel = null; chainPt = null; drag = null;
+    saveSettings(); renderSel();
     G.cx = c.w / 2; G.cy = c.h / 2; G.scale = Math.min(vw / c.w, vh / c.h) * 0.95;
     refreshLos(false);
     renderMaps(); renderMarkers(); syncInputs(); updatePlayerUI(); dirty();
@@ -897,7 +1054,7 @@ function gmMain() {
     await DB.del('maps', id); await DB.del('images', id);
     S.list = S.list.filter(x => x.id !== id);
     touchFile();
-    if (S.cur && S.cur.id === id) { clearTimeout(saveT); S.cur = null; sendFull(); syncInputs(); renderMarkers(); dirty(); }
+    if (S.cur && S.cur.id === id) { clearTimeout(saveT); S.cur = null; S.sel = null; sendFull(); syncInputs(); renderMarkers(); renderSel(); dirty(); }
     renderMaps();
   }
   async function renameSection(old) {
@@ -989,13 +1146,17 @@ function gmMain() {
   }
   function renderMarkers() {
     const el = $('mk'), c = S.cur; el.textContent = '';
-    $('mkNote').textContent = c && c.markers.length
-      ? 'Tick a marker to show it on the player screen.'
+    $('mkNote').textContent = !c ? '' : c.markers.length ? 'Tick a marker to show it on the player screen.'
+      : S.party.length ? 'No markers on this map yet. Press G (Place party) and click the map.'
       : 'No markers yet. Press M and click the map to add one.';
+    $('partyNote').textContent = S.party.length
+      ? 'Saved party: ' + S.party.map((m, i) => m.name || `Marker ${i + 1}`).join(', ')
+      : 'Name your markers, then “Save as party” to reuse them on every map.';
     if (!c) return;
     c.markers.forEach((m, i) => {
       const row = document.createElement('div'); row.className = 'mk';
-      const dot = document.createElement('i'); dot.style.background = COLORS[i % COLORS.length];
+      const dot = document.createElement('input'); dot.type = 'color'; dot.value = m.color; dot.title = 'Marker colour';
+      dot.oninput = () => { m.color = dot.value; postMarkers(); dirty(); scheduleSave(); };
       const name = document.createElement('input'); name.type = 'text'; name.value = m.name || ''; name.placeholder = `Marker ${i + 1}`;
       name.oninput = () => { m.name = name.value.trim(); postMarkers(); dirty(); scheduleSave(); };
       const show = document.createElement('input'); show.type = 'checkbox'; show.checked = m.show; show.title = 'Show on the player screen';
@@ -1010,6 +1171,278 @@ function gmMain() {
     if (i < 0) return;
     c.markers.splice(i, 1);
     renderMarkers(); postMarkers(); postVis(); dirty(); scheduleSave();
+  }
+  const freeColor = c => COLORS.find(x => !c.markers.some(m => m.color === x)) || COLORS[c.markers.length % COLORS.length];
+
+  /* ----- party: a saved set of markers that can be dropped onto any map ----- */
+  function saveParty() { DB.put('meta', { id: 'party', list: S.party }).catch(console.error); touchFile(); renderMarkers(); }
+  function partySave() {
+    const c = S.cur;
+    if (!c || !c.markers.length) { toast('Add and name markers on a map first'); return; }
+    const list = c.markers.map(m => ({ name: m.name || '', color: m.color }));
+    const old = S.party.map(m => m.name).join(', ');
+    if (S.party.length && JSON.stringify(list) !== JSON.stringify(S.party) && !confirm(`Replace the saved party (${old}) with the markers on this map?`)) return;
+    S.party = list; saveParty();
+    toast(`Party saved: ${list.length} marker${list.length > 1 ? 's' : ''}. Press G on another map to place them.`, 5000);
+  }
+  function placeParty(p) {
+    const c = S.cur;
+    if (!S.party.length) { toast('No party saved yet: name your markers on a map, then click “Save as party”', 6000); setTool('select'); return; }
+    const have = new Set(c.markers.map(m => (m.name || '').toLowerCase()).filter(Boolean));
+    const add = S.party.filter(m => !m.name || !have.has(m.name.toLowerCase()));
+    setTool('select');
+    if (!add.length) { toast('The whole party is already on this map'); return; }
+    const g = c.grid, gx = Math.floor(p.x / g), gy = Math.floor(p.y / g);
+    const spots = [[0, 0], [1, 0], [0, 1], [1, 1], [-1, 0], [-1, 1], [0, -1], [1, -1], [-1, -1], [2, 0], [2, 1], [0, 2], [1, 2], [-1, 2], [2, -1], [2, 2]];
+    add.forEach((pm, i) => {
+      const [dx, dy] = spots[i % spots.length];
+      const m = { x: (gx + dx + 0.5) * g, y: (gy + dy + 0.5) * g, name: pm.name, color: pm.color || freeColor(c), show: true };
+      c.markers.push(m); m.poly = visPoly(m.x, m.y, c.segs); revealMarker(m);
+    });
+    renderMarkers(); postMarkers(); postVis(); scheduleSave(); dirty();
+  }
+
+  /* ----- drawings and images ----- */
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const halfSnap = p => { const h = S.cur.grid / 2; return { x: Math.round(p.x / h) * h, y: Math.round(p.y / h) * h }; };
+  const gridSnap = p => { const g = S.cur.grid; return { x: Math.round(p.x / g) * g, y: Math.round(p.y / g) * g }; };
+  async function ensureTok(id) {
+    if (tokImgs.has(id)) return tokImgs.get(id);
+    let t = null;
+    try { const r = await DB.get('images', id); if (r && r.blob) t = { blob: r.blob, img: await loadImage(r.blob) }; } catch (e) {}
+    tokImgs.set(id, t);
+    return t;
+  }
+  // Large images are scaled down so placing many of them stays light.
+  async function prepTok(file) {
+    const im = await loadImage(file);
+    const w = im.naturalWidth || 512, h = im.naturalHeight || 512, m = Math.max(w, h), MAX = 1024;
+    if (!/svg/i.test(file.type) && m <= MAX) return file;
+    const s = MAX / m, c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s));
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+    return await new Promise(r => c.toBlob(b => r(b || file), 'image/webp', 0.92));
+  }
+  async function addToLibrary(files) {
+    const ids = [];
+    for (const f of files) {
+      if (!(f.type.startsWith('image/') || /\.(png|jpe?g|webp|avif|gif|svg)$/i.test(f.name))) continue;
+      try {
+        const blob = await prepTok(f), id = 't' + newId();
+        await DB.put('images', { id, blob });
+        tokImgs.set(id, { blob, img: await loadImage(blob) });
+        S.library.push({ id, name: f.name.replace(/\.[^.]+$/, ''), size: 1 });
+        ids.push(id);
+      } catch (e) { toast(`Could not use “${f.name}”`); }
+    }
+    if (ids.length) { saveLibrary(); renderLib(); }
+    return ids;
+  }
+  function saveLibrary() { DB.put('meta', { id: 'library', items: S.library }).catch(console.error); touchFile(); }
+  async function removeLib(id) {
+    const it = S.library.find(x => x.id === id);
+    if (!it || !confirm(`Remove “${it.name}” from the image list? Copies already placed on maps stay.`)) return;
+    S.library = S.library.filter(x => x !== it);
+    if (S.placing === id) setTool('select');
+    saveLibrary(); renderLib();
+    let used = !!(S.cur && S.cur.shapes.some(s => s.img === id));
+    if (!used) for (const r of await DB.all('maps')) if (!(S.cur && r.id === S.cur.id) && (r.shapes || []).some(s => s.img === id)) { used = true; break; }
+    if (!used) { await DB.del('images', id); tokImgs.delete(id); }
+  }
+  function renderLib() {
+    const el = $('lib'); el.textContent = '';
+    $('libNote').textContent = S.library.length
+      ? 'Click an image, then click the map to place it (Esc to stop), or drag it onto the map.'
+      : 'Add images of monsters, boats or props to place them on maps. You can also drop image files onto the map.';
+    for (const it of S.library) {
+      const t = document.createElement('div');
+      t.className = 'tk' + (S.tool === 'token' && S.placing === it.id ? ' on' : ''); t.title = it.name;
+      const img = tokImg(it.id);
+      if (img) t.style.backgroundImage = `url("${img.src}")`;
+      t.draggable = true;
+      t.ondragstart = e => { e.dataTransfer.setData(TOK_DND, it.id); e.dataTransfer.effectAllowed = 'copy'; };
+      t.onclick = () => { if (!S.cur) { toast('Open a map first'); return; } S.placing = it.id; setTool('token'); };
+      const x = document.createElement('button'); x.textContent = '×'; x.title = 'Remove from the image list';
+      x.onclick = e => { e.stopPropagation(); removeLib(it.id); };
+      t.append(x); el.append(t);
+    }
+  }
+  function tokShape(id, p) {
+    const c = S.cur, img = tokImg(id);
+    if (!c || !img) return null;
+    const it = S.library.find(x => x.id === id), L = (it && it.size || 1) * c.grid;
+    const ar = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+    return { id: 's' + newId(), k: 'token', img: id, name: it ? it.name : '', x: p.x, y: p.y,
+             w: ar >= 1 ? L : L * ar, h: ar >= 1 ? L / ar : L, rot: 0, show: S.drawShow };
+  }
+  // Odd-sized images centre on a square, even-sized ones on a grid corner, like minis.
+  function snapTok(s) {
+    const g = S.cur.grid, f = (v, n) => (Math.round(n) % 2 ? (Math.floor(v / g) + 0.5) * g : Math.round(v / g) * g);
+    s.x = f(s.x, s.w / g); s.y = f(s.y, s.h / g);
+  }
+  async function placeToken(id, p, free) {
+    if (!S.cur || !(await ensureTok(id))) return null;
+    const s = tokShape(id, p);
+    if (!free) snapTok(s);
+    addShape(s);
+    return s;
+  }
+  function addShape(s, quiet) {
+    S.cur.shapes.push(s); S.added.push({ s });
+    if (!quiet) selectShape(s);
+    postShapes(); scheduleSave(); dirty();
+  }
+  function removeShape(s, undoing) {
+    const c = S.cur, i = c.shapes.indexOf(s);
+    if (i < 0) return;
+    c.shapes.splice(i, 1);
+    if (!undoing) S.added.push({ r: s, i });   // Ctrl+Z puts it back
+    if (S.sel === s) selectShape(null);
+    postShapes(); scheduleSave(); dirty();
+  }
+  function selectShape(s) { S.sel = s; renderSel(); dirty(); }
+  const shapeChanged = () => { renderSel(); postShapes(); scheduleSave(); dirty(); };
+  function shapeLabel(s, c) {
+    const ft = v => Math.round(v / c.grid * c.dist * 10) / 10 + ' ft';
+    switch (s.k) {
+      case 'circle': return `Circle, ${ft(s.r)} radius`;
+      case 'cone': return `Cone, ${ft(s.len)}`;
+      case 'line': return `Line, ${ft(Math.hypot(s.x2 - s.x, s.y2 - s.y))} × ${ft(s.w)}`;
+      case 'rect': return `Square, ${ft(Math.abs(s.x2 - s.x))} × ${ft(Math.abs(s.y2 - s.y))}`;
+      case 'pen': return 'Drawing';
+      case 'text': return `Note: “${s.text}”`;
+      case 'token': return s.name || 'Image';
+    }
+    return '';
+  }
+  function renderSel() {
+    const s = S.sel, c = S.cur;
+    $('selBox').hidden = !s || !c;
+    if (!s || !c) return;
+    $('selTxt').textContent = shapeLabel(s, c);
+    $('cSelShow').checked = !!s.show;
+    $('selTok').hidden = s.k !== 'token';
+    $('bSelText').hidden = s.k !== 'text';
+    if (s.k === 'token') $('nTokSize').value = +(Math.max(s.w, s.h) / c.grid).toFixed(2);
+  }
+  function editText(s) {
+    const t = prompt('Note text:', s.text);
+    if (t === null) return;
+    if (!t.trim()) { removeShape(s); return; }
+    s.text = t.trim(); shapeChanged();
+  }
+  function setLibSize(s) {
+    const it = S.library.find(x => x.id === s.img);
+    if (it) { it.size = +(Math.max(s.w, s.h) / S.cur.grid).toFixed(2); saveLibrary(); }
+  }
+  function textW(s) { ctx.save(); ctx.font = `bold ${s.size}px system-ui,sans-serif`; const w = ctx.measureText(s.text).width; ctx.restore(); return w; }
+  function toLocal(s, p) {
+    const a = -(s.rot || 0) * Math.PI / 180, dx = p.x - s.x, dy = p.y - s.y;
+    return { x: dx * Math.cos(a) - dy * Math.sin(a), y: dx * Math.sin(a) + dy * Math.cos(a) };
+  }
+  function tokHandle(s) {
+    const a = (s.rot || 0) * Math.PI / 180, hx = s.w / 2, hy = s.h / 2;
+    return { x: s.x + hx * Math.cos(a) - hy * Math.sin(a), y: s.y + hx * Math.sin(a) + hy * Math.cos(a) };
+  }
+  function inPoly(p, q) {
+    let ins = false;
+    for (let i = 0, j = q.length - 2; i < q.length; j = i, i += 2)
+      if ((q[i + 1] > p.y) !== (q[j + 1] > p.y) && p.x < (q[j] - q[i]) * (p.y - q[i + 1]) / (q[j + 1] - q[i + 1]) + q[i]) ins = !ins;
+    return ins;
+  }
+  function shapeHit(s, p, tol) {
+    switch (s.k) {
+      case 'circle': return Math.hypot(p.x - s.x, p.y - s.y) <= s.r + tol;
+      case 'rect': return p.x >= Math.min(s.x, s.x2) - tol && p.x <= Math.max(s.x, s.x2) + tol && p.y >= Math.min(s.y, s.y2) - tol && p.y <= Math.max(s.y, s.y2) + tol;
+      case 'cone': return inPoly(p, conePts(s));
+      case 'line': return distSeg(p, [s.x, s.y, s.x2, s.y2]) <= s.w / 2 + tol;
+      case 'pen': {
+        const q = s.pts;
+        if (q.length === 2) return Math.hypot(p.x - q[0], p.y - q[1]) <= s.w / 2 + tol;
+        for (let i = 0; i + 3 < q.length; i += 2) if (distSeg(p, [q[i], q[i + 1], q[i + 2], q[i + 3]]) <= s.w / 2 + tol) return true;
+        return false;
+      }
+      case 'text': return Math.abs(p.x - s.x) <= textW(s) / 2 + tol && Math.abs(p.y - s.y) <= s.size * 0.6 + tol;
+      case 'token': { const l = toLocal(s, p); return Math.abs(l.x) <= s.w / 2 + tol && Math.abs(l.y) <= s.h / 2 + tol; }
+    }
+    return false;
+  }
+  function hitShape(p) {
+    const c = S.cur, tol = 5 / G.scale;
+    for (let i = c.shapes.length - 1; i >= 0; i--) if (shapeHit(c.shapes[i], p, tol)) return c.shapes[i];
+    return null;
+  }
+  function moveShape(s, dx, dy) {
+    if (s.pts) { for (let i = 0; i < s.pts.length; i += 2) { s.pts[i] += dx; s.pts[i + 1] += dy; } return; }
+    s.x += dx; s.y += dy;
+    if (s.x2 !== undefined) { s.x2 += dx; s.y2 += dy; }
+  }
+  function shapeBox(s) {
+    let q;
+    switch (s.k) {
+      case 'circle': return [s.x - s.r, s.y - s.r, s.x + s.r, s.y + s.r];
+      case 'text': { const w = textW(s) / 2, h = s.size * 0.6; return [s.x - w, s.y - h, s.x + w, s.y + h]; }
+      case 'rect': q = [s.x, s.y, s.x2, s.y2]; break;
+      case 'cone': q = conePts(s); break;
+      case 'line': q = linePts(s); break;
+      case 'pen': q = s.pts; break;
+      default: return null;
+    }
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < q.length; i += 2) { x0 = Math.min(x0, q[i]); x1 = Math.max(x1, q[i]); y0 = Math.min(y0, q[i + 1]); y1 = Math.max(y1, q[i + 1]); }
+    return [x0, y0, x1, y1];
+  }
+  // Sizes snap to whole squares (Alt for free); angles stay free.
+  function updateShape(s, p, free) {
+    const g = S.cur.grid, len = v => free ? v : Math.max(g, Math.round(v / g) * g);
+    switch (s.k) {
+      case 'circle': s.r = len(Math.hypot(p.x - s.x, p.y - s.y)); break;
+      case 'cone': s.ang = Math.atan2(p.y - s.y, p.x - s.x); s.len = len(Math.hypot(p.x - s.x, p.y - s.y)); break;
+      case 'line': {
+        const a = Math.atan2(p.y - s.y, p.x - s.x), l = len(Math.hypot(p.x - s.x, p.y - s.y));
+        s.x2 = s.x + Math.cos(a) * l; s.y2 = s.y + Math.sin(a) * l; break;
+      }
+      case 'rect': { const b = free ? p : gridSnap(p); s.x2 = b.x; s.y2 = b.y; break; }
+      case 'pen': {
+        const q = s.pts, lx = q[q.length - 2], ly = q[q.length - 1];
+        if (Math.hypot(p.x - lx, p.y - ly) > 3 / G.scale) q.push(Math.round(p.x), Math.round(p.y));
+        break;
+      }
+    }
+  }
+  function drawSel(s, k, c) {
+    ctx.save();
+    ctx.setLineDash([6 * k, 4 * k]); ctx.lineWidth = 1.5 * k; ctx.strokeStyle = '#35e0ff';
+    let top;
+    if (s.k === 'token') {
+      ctx.save(); ctx.translate(s.x, s.y); ctx.rotate((s.rot || 0) * Math.PI / 180);
+      ctx.strokeRect(-s.w / 2, -s.h / 2, s.w, s.h); ctx.restore();
+      const h = tokHandle(s);
+      ctx.setLineDash([]); ctx.fillStyle = '#35e0ff'; ctx.fillRect(h.x - 5 * k, h.y - 5 * k, 10 * k, 10 * k);
+      ctx.strokeStyle = '#000'; ctx.lineWidth = k; ctx.strokeRect(h.x - 5 * k, h.y - 5 * k, 10 * k, 10 * k);
+      top = { x: s.x, y: s.y - Math.hypot(s.w, s.h) / 2 };
+    } else {
+      const b = shapeBox(s), pad = 4 * k;
+      ctx.strokeRect(b[0] - pad, b[1] - pad, b[2] - b[0] + 2 * pad, b[3] - b[1] + 2 * pad);
+      top = { x: (b[0] + b[2]) / 2, y: b[1] - pad };
+    }
+    const t = shapeLabel(s, c) + (s.show ? '' : ' (GM only)');
+    ctx.setLineDash([]); ctx.font = `bold ${13 * k}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.lineJoin = 'round';
+    ctx.lineWidth = 3 * k; ctx.strokeStyle = '#000'; ctx.strokeText(t, top.x, top.y - 3 * k);
+    ctx.fillStyle = '#fff'; ctx.fillText(t, top.x, top.y - 3 * k);
+    ctx.restore();
+  }
+  function renderSwatches() {
+    const el = $('swatches'); el.textContent = '';
+    for (const col of SHAPE_COLORS) {
+      const b = document.createElement('button'); b.style.background = col; b.title = 'Drawing colour';
+      if (col === S.drawColor) b.className = 'on';
+      b.onclick = () => {
+        S.drawColor = col; saveSettings(); renderSwatches();
+        if (S.sel && S.sel.k !== 'token') { S.sel.color = col; shapeChanged(); }
+      };
+      el.append(b);
+    }
   }
 
   /* ----- drawing ----- */
@@ -1039,6 +1472,18 @@ function gmMain() {
     ctx.globalCompositeOperation = 'saturation'; ctx.drawImage(c.fog, 0, 0, c.w, c.h);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 0.55; ctx.drawImage(c.fog, 0, 0, c.w, c.h); ctx.globalAlpha = 1;
+
+    // drawings and images (above the GM fog tint so the GM sees them clearly)
+    drawShapes(ctx, c.shapes, tokImg, c.grid, k, true);
+    if (drag && drag.k === 'shape') drawShapes(ctx, [drag.s], tokImg, c.grid, k, true);
+    if (hover && S.tool === 'token' && S.placing) {
+      const g = tokShape(S.placing, hover);
+      if (g) { if (!hover.alt) snapTok(g); ctx.save(); ctx.globalAlpha = 0.5; drawShapes(ctx, [g], tokImg, c.grid, k, false); ctx.restore(); }
+    }
+    {
+      const sel = drag && drag.k === 'shape' ? (drag.moved && drag.s.k !== 'pen' ? drag.s : null) : S.sel;
+      if (sel) drawSel(sel, k, c);
+    }
 
     // current line of sight of each marker
     ctx.lineWidth = 1.5 * k; ctx.strokeStyle = 'rgba(255,240,150,.55)';
@@ -1075,7 +1520,7 @@ function gmMain() {
     const mr = Math.max(c.grid * 0.32, 9 * k);
     c.markers.forEach((m, i) => {
       ctx.beginPath(); ctx.arc(m.x, m.y, mr, 0, Math.PI * 2);
-      ctx.fillStyle = COLORS[i % COLORS.length]; ctx.fill();
+      ctx.fillStyle = m.color; ctx.fill();
       ctx.lineWidth = 2.5 * k; ctx.strokeStyle = (drag && drag.m === m && drag.blocked) ? '#ff3b3b' : '#fff'; ctx.stroke();
       ctx.fillStyle = '#fff'; ctx.font = `bold ${mr * 1.1}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(String(i + 1), m.x, m.y + mr * 0.05);
@@ -1163,6 +1608,7 @@ function gmMain() {
     const p = toMap(e);
     const startPan = () => { drag = { k: 'pan', sx: e.clientX, sy: e.clientY, cx: G.cx, cy: G.cy }; };
     if (e.button === 2) {
+      if (S.tool === 'token') { setTool('select'); return; }
       const m = hitMarker(p);
       if (m) { removeMarker(m); return; }
       if (chainPt) { chainPt = null; dirty(); return; }
@@ -1180,12 +1626,40 @@ function gmMain() {
       case 'select': {
         const m = hitMarker(p);
         if (m) { drag = { k: 'marker', m, last: { x: m.x, y: m.y }, ox: m.x - p.x, oy: m.y - p.y, blocked: false }; break; }
+        if (S.sel && S.sel.k === 'token') {
+          const h = tokHandle(S.sel);
+          if (Math.hypot(p.x - h.x, p.y - h.y) <= 9 / G.scale) { drag = { k: 'resize', s: S.sel, w0: S.sel.w, h0: S.sel.h, alt: e.altKey }; break; }
+        }
         const d = hitWall(p, true);
         if (d) { d.open = !d.open; refreshLos(true); scheduleSave(); break; }
+        const s = hitShape(p);
+        if (s) { selectShape(s); drag = { k: 'move', s, last: p, alt: e.altKey, moved: false }; break; }
+        if (S.sel) selectShape(null);
         startPan(); break;
       }
+      case 'circle': case 'cone': case 'line': case 'rect': case 'pen': {
+        const t = S.tool, a = e.altKey || t === 'pen' ? p : t === 'rect' ? gridSnap(p) : halfSnap(p);
+        const s = { id: 's' + newId(), k: t, color: S.drawColor, show: S.drawShow };
+        if (t === 'circle') Object.assign(s, { x: a.x, y: a.y, r: 0 });
+        else if (t === 'cone') Object.assign(s, { x: a.x, y: a.y, ang: 0, len: 0 });
+        else if (t === 'line') Object.assign(s, { x: a.x, y: a.y, x2: a.x, y2: a.y, w: c.grid });
+        else if (t === 'rect') Object.assign(s, { x: a.x, y: a.y, x2: a.x, y2: a.y });
+        else Object.assign(s, { w: Math.max(c.grid * 0.08, 3 / G.scale), pts: [Math.round(p.x), Math.round(p.y)] });
+        drag = { k: 'shape', s, sx: e.clientX, sy: e.clientY, moved: false };
+        break;
+      }
+      case 'text': {
+        const t = prompt('Text for the note:');
+        if (t && t.trim()) {
+          addShape({ id: 's' + newId(), k: 'text', color: S.drawColor, show: S.drawShow, x: p.x, y: p.y, text: t.trim(), size: c.grid * 0.45 });
+          setTool('select');
+        }
+        break;
+      }
+      case 'token': if (S.placing) placeToken(S.placing, p, e.altKey); break;
+      case 'party': placeParty(p); break;
       case 'marker': {
-        const m = { x: p.x, y: p.y, name: '', show: true };
+        const m = { x: p.x, y: p.y, name: '', color: freeColor(c), show: true };
         c.markers.push(m); m.poly = visPoly(m.x, m.y, c.segs); revealMarker(m);
         renderMarkers(); postMarkers(); postVis();
         setTool('select'); break;
@@ -1201,7 +1675,7 @@ function gmMain() {
         const s = snapPt(p, e.altKey);
         if (chainPt && (chainPt.x !== s.x || chainPt.y !== s.y)) {
           const w = { c: [chainPt.x, chainPt.y, s.x, s.y], door: S.tool === 'door' ? 1 : 0, open: false, sight: true };
-          c.walls.push(w); S.added.push(w);
+          c.walls.push(w); S.added.push({ w });
           chainPt = S.tool === 'wall' ? s : null;
           refreshLos(false); scheduleSave();
         } else chainPt = s;
@@ -1217,7 +1691,7 @@ function gmMain() {
   cv.addEventListener('pointermove', e => {
     const c = S.cur; if (!c) return;
     const p = toMap(e);
-    hover = p;
+    hover = p; hover.alt = e.altKey;
     if (S.tool === 'wall' || S.tool === 'door') hover.snap = snapPt(p, e.altKey);
     if (drag) switch (drag.k) {
       case 'pan':
@@ -1233,6 +1707,18 @@ function gmMain() {
         break;
       }
       case 'brush': emit(brushOp(drag.mode, drag.last, p)); drag.last = p; break;
+      case 'shape':
+        if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 3) drag.moved = true;
+        updateShape(drag.s, p, e.altKey); break;
+      case 'move':
+        moveShape(drag.s, p.x - drag.last.x, p.y - drag.last.y); drag.last = p; drag.moved = true;
+        postShapes(); break;
+      case 'resize': {
+        const s = drag.s, l = toLocal(s, p), big = Math.max(drag.w0, drag.h0);
+        const f = Math.max(c.grid * 0.25 / big, Math.hypot(l.x, l.y) / Math.hypot(drag.w0 / 2, drag.h0 / 2));
+        s.w = drag.w0 * f; s.h = drag.h0 * f;
+        renderSel(); postShapes(); break;
+      }
       case 'rect': drag.b = p; break;
       case 'pview':
         if (drag.click && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 4) drag.click = false;
@@ -1246,6 +1732,27 @@ function gmMain() {
     if (!d || !S.cur) return;
     if (d.k === 'marker') { if (d.blocked) revealMarker(d.m); postVis(); scheduleSave(); }
     if (d.k === 'pview' && d.click) setCam({ cx: d.a.x, cy: d.a.y });
+    if (d.k === 'shape') {
+      const s = d.s;
+      if (s.k === 'pen') addShape(s, true);
+      else if (d.moved && (s.k !== 'rect' || (s.x2 !== s.x && s.y2 !== s.y))) { addShape(s); setTool('select'); }
+    }
+    if (d.k === 'move' && d.moved) {
+      const s = d.s;
+      if (!d.alt) {   // keep spell areas and images lined up with the grid
+        if (s.k === 'token') snapTok(s);
+        else if (s.k !== 'pen' && s.k !== 'text') {
+          const a = s.k === 'rect' ? gridSnap(s) : halfSnap(s);
+          moveShape(s, a.x - s.x, a.y - s.y);
+        }
+      }
+      shapeChanged();
+    }
+    if (d.k === 'resize') {
+      const s = d.s, g = S.cur.grid;
+      if (!d.alt) { const big = Math.max(s.w, s.h), want = Math.max(0.25, Math.round(big / g * 4) / 4) * g; s.w *= want / big; s.h *= want / big; snapTok(s); }
+      setLibSize(s); shapeChanged();
+    }
     if (d.k === 'rect') {
       const x = Math.min(d.a.x, d.b.x), y = Math.min(d.a.y, d.b.y), w = Math.abs(d.b.x - d.a.x), h = Math.abs(d.b.y - d.a.y);
       if (w > 2 && h > 2) emit({ t: 'rect', mode: d.mode, x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) });
@@ -1259,6 +1766,10 @@ function gmMain() {
     e.preventDefault();
     const c = S.cur; if (!c) return;
     const f = Math.exp(-(e.deltaY || e.deltaX) * 0.0015);
+    if (e.altKey && S.sel && S.sel.k === 'token') {
+      S.sel.rot = ((S.sel.rot || 0) + ((e.deltaY || e.deltaX) > 0 ? 15 : -15) + 360) % 360;
+      shapeChanged(); return;
+    }
     if (e.shiftKey) { setCam({ scale: c.cam.scale * f }); return; }
     const p = toMap(e);
     const ns = Math.max(0.02, Math.min(20, G.scale * f));
@@ -1267,14 +1778,22 @@ function gmMain() {
   }, { passive: false });
 
   /* ----- keyboard ----- */
-  const KEYS = { v: 'select', m: 'marker', r: 'reveal', h: 'hide', t: 'rrect', y: 'hrect', p: 'pview', w: 'wall', d: 'door', e: 'erase', x: 'ping' };
+  const KEYS = { v: 'select', m: 'marker', r: 'reveal', h: 'hide', t: 'rrect', y: 'hrect', p: 'pview', w: 'wall', d: 'door', e: 'erase', x: 'ping',
+                 o: 'circle', c: 'cone', l: 'line', s: 'rect', b: 'pen', a: 'text', g: 'party' };
   addEventListener('keydown', e => {
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     if (e.code === 'Space') { space = true; e.preventDefault(); return; }
-    if (e.key === 'Escape') { chainPt = null; dirty(); return; }
+    if (e.key === 'Escape') {
+      chainPt = null;
+      if (S.tool !== 'select' && S.tool !== 'wall' && S.tool !== 'door') setTool('select'); else if (S.sel) selectShape(null);
+      dirty(); return;
+    }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && S.sel) { removeShape(S.sel); e.preventDefault(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-      const c = S.cur, w = S.added.pop();
-      if (c && w) { const i = c.walls.indexOf(w); if (i >= 0) c.walls.splice(i, 1); chainPt = null; refreshLos(false); scheduleSave(); }
+      const c = S.cur, u = S.added.pop();
+      if (c && u && u.w) { const i = c.walls.indexOf(u.w); if (i >= 0) c.walls.splice(i, 1); chainPt = null; refreshLos(false); scheduleSave(); }
+      if (c && u && u.s) removeShape(u.s, true);
+      if (c && u && u.r) { c.shapes.splice(Math.min(u.i, c.shapes.length), 0, u.r); selectShape(u.r); postShapes(); scheduleSave(); }
       e.preventDefault(); return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -1287,9 +1806,10 @@ function gmMain() {
   /* ----- sidebar ----- */
   function setTool(t) {
     S.tool = t; chainPt = null;
-    for (const b of $('tools').children) b.classList.toggle('on', b.dataset.tool === t);
+    if (t !== 'token') S.placing = null;
+    for (const b of document.querySelectorAll('button[data-tool]')) b.classList.toggle('on', b.dataset.tool === t);
     cv.style.cursor = t === 'select' ? 'default' : 'crosshair';
-    dirty();
+    renderLib(); dirty();
   }
   function setBrush(v) {
     S.brushSq = Math.max(0.5, Math.min(12, v));
@@ -1300,12 +1820,50 @@ function gmMain() {
     const c = S.cur;
     $('tName').value = c ? c.name : ''; $('tSec').value = c ? c.section || '' : ''; $('nGrid').value = c ? c.grid : ''; $('nDist').value = c ? c.dist : '';
     $('nRadius').value = c ? c.radius || 0 : 0;
-    $('cWalls').checked = S.showWalls; $('cGrid').checked = S.gridOn; $('nTv').value = S.tv; $('cDim').checked = S.dim;
+    $('cWalls').checked = S.showWalls; $('cGrid').checked = S.gridOn; $('nTv').value = S.tv; $('cDim').checked = S.dim; $('cShow').checked = S.drawShow;
     $('bFreeze').classList.toggle('on', S.frozen); $('bBlank').classList.toggle('on', S.blank);
     $('bFreeze').textContent = S.frozen ? 'Frozen' : 'Freeze';
     $('bBlank').textContent = S.blank ? 'Blanked' : 'Blank';
   }
-  $('tools').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTool(b.dataset.tool); });
+  document.addEventListener('click', e => { const b = e.target.closest('button[data-tool]'); if (b) setTool(b.dataset.tool); });
+  cv.addEventListener('dblclick', e => {
+    if (!S.cur || S.tool !== 'select') return;
+    const s = hitShape(toMap(e));
+    if (s && s.k === 'text') editText(s);
+  });
+  $('bPartySave').onclick = partySave;
+  $('cShow').onchange = e => { S.drawShow = e.target.checked; saveSettings(); };
+  $('cSelShow').onchange = e => { if (S.sel) { S.sel.show = e.target.checked; shapeChanged(); } };
+  $('nTokSize').onchange = e => {
+    const s = S.sel; if (!s || s.k !== 'token') return;
+    const m = Math.max(0.25, +e.target.value || 1) * S.cur.grid / Math.max(s.w, s.h);
+    s.w *= m; s.h *= m; snapTok(s); setLibSize(s); shapeChanged();
+  };
+  const rotSel = d => { const s = S.sel; if (s && s.k === 'token') { s.rot = ((s.rot || 0) + d + 360) % 360; shapeChanged(); } };
+  $('bRotL').onclick = () => rotSel(-45);
+  $('bRotR').onclick = () => rotSel(45);
+  $('bSelText').onclick = () => S.sel && editText(S.sel);
+  $('bSelDel').onclick = () => S.sel && removeShape(S.sel);
+  $('bSelFront').onclick = () => {
+    const s = S.sel, a = S.cur && S.cur.shapes; if (!s || !a) return;
+    a.splice(a.indexOf(s), 1); a.push(s); shapeChanged();
+  };
+  $('bAddTok').onclick = () => $('tPick').click();
+  $('tPick').onchange = async e => {
+    const files = [...e.target.files]; e.target.value = '';
+    const ids = await addToLibrary(files);
+    if (ids.length === 1 && S.cur) { S.placing = ids[0]; setTool('token'); toast('Click the map to place it (Esc to stop)'); }
+  };
+  $('bClearDraw').onclick = () => {
+    const c = S.cur; if (!c) return;
+    const n = c.shapes.filter(s => s.k !== 'token').length;
+    if (!n) { toast('There are no drawings on this map'); return; }
+    if (!confirm(`Remove all ${n} drawing${n > 1 ? 's' : ''} from this map? Placed images stay.`)) return;
+    c.shapes = c.shapes.filter(s => s.k === 'token');
+    S.added = S.added.filter(u => !(u.s || u.r) || (u.s || u.r).k === 'token');
+    if (S.sel && S.sel.k !== 'token') selectShape(null);
+    postShapes(); scheduleSave(); dirty();
+  };
   $('rBrush').oninput = e => setBrush(+e.target.value);
   $('bAdd').onclick = () => $('fPick').click();
   $('bAddSec').onclick = addSection;
@@ -1369,7 +1927,7 @@ function gmMain() {
 
   /* ----- panels: two docks, drag a title to move, minimise ----- */
   const PANEL_DND = 'application/x-tablefog-panel';
-  const DEFAULT_LAYOUT = () => ({ left: ['player', 'markers'], right: ['campaign', 'maps', 'tools', 'fog', 'map', 'help'], min: {} });
+  const DEFAULT_LAYOUT = () => ({ left: ['player', 'markers'], right: ['campaign', 'maps', 'tools', 'draw', 'fog', 'map', 'help'], min: {} });
   const docks = { left: $('left'), right: $('right') };
   const panels = {};
   let dragPanel = null;
@@ -1379,8 +1937,13 @@ function gmMain() {
     const placed = new Set();
     for (const side of ['left', 'right']) for (const id of L[side]) if (panels[id] && !placed.has(id)) { docks[side].append(panels[id]); placed.add(id); }
     const def = DEFAULT_LAYOUT();
-    // A panel added in a newer version is missing from a saved layout: put it at the top of its default side.
-    for (const id in panels) if (!placed.has(id)) docks[def.left.includes(id) ? 'left' : 'right'].prepend(panels[id]);
+    // A panel added in a newer version is missing from a saved layout: put it after its default neighbour.
+    for (const id in panels) if (!placed.has(id)) {
+      const side = def.left.includes(id) ? 'left' : 'right', list = def[side];
+      const prev = list.slice(0, list.indexOf(id)).reverse().find(x => placed.has(x) && panels[x].parentNode === docks[side]);
+      if (prev) panels[prev].after(panels[id]); else docks[side].prepend(panels[id]);
+      placed.add(id);
+    }
     for (const id in panels) {
       panels[id].classList.toggle('min', !!L.min[id]);
       panels[id].querySelector('h2 button').textContent = L.min[id] ? '▸' : '▾';
@@ -1429,26 +1992,59 @@ function gmMain() {
   applyLayout();
 
   /* ----- drag and drop ----- */
+  // Image files dropped onto an open map are placed on it; dropped on the top band (or with no map open) they become new maps.
   let dragDepth = 0;
-  const isFileDrag = e => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
-  addEventListener('dragenter', e => { if (!isFileDrag(e)) return; e.preventDefault(); dragDepth++; $('drop').classList.add('show'); });
+  const dtTypes = e => e.dataTransfer ? [...e.dataTransfer.types] : [];
+  const isFileDrag = e => dtTypes(e).includes('Files');
+  function zoneAt(e) {
+    if (e.target && e.target.closest && e.target.closest('#lib')) return 'lib';
+    const r = $('stage').getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return 'map';
+    return S.cur && e.clientY > r.top + 102 ? 'tok' : 'map';
+  }
+  addEventListener('dragenter', e => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault(); dragDepth++;
+    $('drop').classList.add('show'); $('drop').classList.toggle('nomap', !S.cur);
+    $('dropMap').textContent = S.cur ? 'Drop here to add as a new map' : 'Drop map files here';
+  });
   addEventListener('dragleave', e => { if (isFileDrag(e) && --dragDepth <= 0) { dragDepth = 0; $('drop').classList.remove('show'); } });
-  addEventListener('dragover', e => { if (isFileDrag(e)) e.preventDefault(); });
-  addEventListener('drop', e => {
+  addEventListener('dragover', e => {
+    if (isFileDrag(e)) {
+      e.preventDefault();
+      const z = zoneAt(e);
+      $('dropMap').classList.toggle('hot', z === 'map'); $('dropTok').classList.toggle('hot', z === 'tok');
+    } else if (dtTypes(e).includes(TOK_DND) && e.target === cv) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
+  });
+  addEventListener('drop', async e => {
     e.preventDefault(); dragDepth = 0; $('drop').classList.remove('show');
-    if (e.dataTransfer && e.dataTransfer.files.length) importFiles(e.dataTransfer.files);
+    if (dtTypes(e).includes(TOK_DND)) { if (e.target === cv && S.cur) placeToken(e.dataTransfer.getData(TOK_DND), toMap(e), e.altKey); return; }
+    const files = e.dataTransfer ? [...e.dataTransfer.files] : [];
+    if (!files.length) return;
+    const z = zoneAt(e), at = S.cur ? toMap(e) : null, free = e.altKey;
+    if (z === 'map' || files.some(f => !(f.type.startsWith('image/') || /\.(png|jpe?g|webp|avif|gif|svg)$/i.test(f.name)))) { importFiles(files); return; }
+    const ids = await addToLibrary(files);
+    if (z === 'tok' && S.cur) for (let i = 0; i < ids.length; i++) await placeToken(ids[i], { x: at.x + i * S.cur.grid, y: at.y }, free);
+    else if (ids.length) toast(`Added ${ids.length} image${ids.length > 1 ? 's' : ''} to the list`);
   });
 
   /* ----- start ----- */
   new ResizeObserver(resize).observe(cv);
-  resize(); setTool('select'); setBrush(S.brushSq); syncInputs();
-  window.tablefog = { S, P, G, F, importFiles, openMap, emit, setCam, refreshLos, visPoly, saveNow, ping, buildCampaign, loadCampaign, writeFile, fileConnect };
+  resize(); setTool('select'); setBrush(S.brushSq); syncInputs(); renderSwatches(); renderMarkers();
+  window.tablefog = { S, P, G, F, importFiles, openMap, emit, setCam, refreshLos, visPoly, saveNow, ping, buildCampaign, loadCampaign, writeFile, fileConnect,
+                      addToLibrary, placeToken, placeParty, partySave, addShape, removeShape, tokImgs };
   updateFileUI();
   (async () => {
     await DB.open();
     if (!DB.db) toast('Browser storage is unavailable, so maps and fog will not be kept after closing.', 7000);
     try { S.list = (await DB.all('maps')).map(r => ({ id: r.id, name: r.name, section: r.section || '' })); } catch (e) { S.list = []; }
     renderMaps();
+    try {
+      const l = await DB.get('meta', 'library'), pt = await DB.get('meta', 'party');
+      S.library = (l && l.items) || []; S.party = (pt && pt.list) || [];
+    } catch (e) {}
+    await Promise.all(S.library.map(it => ensureTok(it.id)));
+    renderLib(); renderMarkers();
     let meta = null;
     try { meta = await DB.get('meta', 'file'); } catch (e) {}
     if (meta && meta.handle) {
